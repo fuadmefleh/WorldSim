@@ -1,0 +1,329 @@
+{
+	"Items": [
+		{
+			"Name": "Grain",
+			"IType": "Semi",
+			"BaseQty": 0
+		},
+		{
+			"Name": "Bread",
+			"IType": "Food",
+			"BaseQty": 0
+		},
+		{
+			"Name": "Tools",
+			"IType": "Semi",
+			"BaseQty": 0
+		},
+		{
+			"Name": "Iron Ore",
+			"IType": "Semi",
+			"BaseQty": 0
+		},
+		{
+			"Name": "Iron",
+			"IType": "Semi",
+			"BaseQty": 0
+		},
+		{
+			"Name": "Wood",
+			"IType": "Semi",
+			"BaseQty": 0
+		}
+	],
+	"PopNeeds": [
+		{
+			"WealthLevel": 0,
+			"PopItemNeeds": [
+				{
+					"ItemName": "Bread",
+					"Qty": 7
+				}
+			]
+		}
+	],
+	"AgentTypes": [
+		{
+			"Name": "Wheat Farmer",
+			"RecipeNames": [
+				"Farm Grain"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Baker",
+			"RecipeNames": [
+				"Bake Bread"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Woodcutter",
+			"RecipeNames": [
+				"Chop Wood"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Iron Ore Miner",
+			"RecipeNames": [
+				"Mine Iron Ore"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Iron Smelter",
+			"RecipeNames": [
+				"Refine Iron"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Blacksmith",
+			"RecipeNames": [
+				"Forge Tools"
+			],
+			"StartingGold": 100,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 3
+				}
+			]
+		}
+	],
+	"Recipes": [
+		{
+			"Name": "Farm Grain",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 0.1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Grain",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Bake Bread",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 0.1
+				},
+				{
+					"ItemName": "Wood",
+					"Quantity": 2,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				},
+				{
+					"ItemName": "Grain",
+					"Quantity": 3,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Bread",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Chop Wood",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 0.1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Wood",
+					"Quantity": 5
+				}
+			],
+			"Requirements": [
+				{
+					"ResourceName": "Forest"
+				}
+			]
+		},
+		{
+			"Name": "Mine Iron Ore",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 0.1
+				},
+				{
+					"ItemName": "Bread",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Iron Ore",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Refine Iron",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 0.1
+				},
+				{
+					"ItemName": "Wood",
+					"Quantity": 2,
+					"IdealQuantity": 5,
+					"ChanceOfConsuming": 1.0
+				},
+				{
+					"ItemName": "Iron Ore",
+					"Quantity": 5,
+					"IdealQuantity": 15,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Iron",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Forge Tools",
+			"ChanceOfFailure": 0.05,
+			"Inputs": [
+				{
+					"ItemName": "Wood",
+					"Quantity": 5,
+					"IdealQuantity": 10,
+					"ChanceOfConsuming": 1.0
+				},
+				{
+					"ItemName": "Iron",
+					"Quantity": 15,
+					"IdealQuantity": 30,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 5
+				}
+			]
+		}
+	],
+	"Resources": [
+		{
+			"Name": "Forest",
+			"Biomes": [ "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
+			"HeightTypes": [ "Grass", "Forest", "Rock" ]
+		},
+		{
+			"Name": "Arable Land",
+			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
+			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ]
+		},
+		{
+			"Name": "Iron Ore",
+			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
+			"HeightTypes": [ "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ]
+		}
+	]
+}
