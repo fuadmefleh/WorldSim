@@ -1,15 +1,15 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30011.22
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2047
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorldSimService", "WorldSim\WorldSimService.csproj", "{644B4966-ECF2-4D69-A628-C5194D34A6C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorldSimService", "WorldSim\WorldSimService.csproj", "{644B4966-ECF2-4D69-A628-C5194D34A6C1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorldSimLib", "..\WorldSimLib\WorldSimLib\WorldSimLib.csproj", "{BE8D3D2C-26C6-44DC-A758-A3A5A0D23CCA}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorldSimAPI", "WorldSimAPI\WorldSimAPI.csproj", "{E9C8F64A-B36B-4D74-945D-E045FD6BDAD5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorldSimAPI", "WorldSimAPI\WorldSimAPI.csproj", "{E9C8F64A-B36B-4D74-945D-E045FD6BDAD5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TinkerWorX.AccidentalNoiseLibrary", "AccidentalNoiseLibrary\TinkerWorX.AccidentalNoiseLibrary.csproj", "{E8D255F5-FE68-4720-AF02-B1AD7495B322}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorldSimLib", "WorldSimLib\WorldSimLib\WorldSimLib.csproj", "{29666CAD-2D6B-423B-B643-7410F648A138}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,10 +21,6 @@ Global
 		{644B4966-ECF2-4D69-A628-C5194D34A6C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{644B4966-ECF2-4D69-A628-C5194D34A6C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{644B4966-ECF2-4D69-A628-C5194D34A6C1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BE8D3D2C-26C6-44DC-A758-A3A5A0D23CCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BE8D3D2C-26C6-44DC-A758-A3A5A0D23CCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BE8D3D2C-26C6-44DC-A758-A3A5A0D23CCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BE8D3D2C-26C6-44DC-A758-A3A5A0D23CCA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E9C8F64A-B36B-4D74-945D-E045FD6BDAD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E9C8F64A-B36B-4D74-945D-E045FD6BDAD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E9C8F64A-B36B-4D74-945D-E045FD6BDAD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +29,10 @@ Global
 		{E8D255F5-FE68-4720-AF02-B1AD7495B322}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E8D255F5-FE68-4720-AF02-B1AD7495B322}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E8D255F5-FE68-4720-AF02-B1AD7495B322}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29666CAD-2D6B-423B-B643-7410F648A138}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29666CAD-2D6B-423B-B643-7410F648A138}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29666CAD-2D6B-423B-B643-7410F648A138}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29666CAD-2D6B-423B-B643-7410F648A138}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
