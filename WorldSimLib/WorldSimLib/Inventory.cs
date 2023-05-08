@@ -2,82 +2,84 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using WorldSimLib.DataObjects;
+using WorldSimLib.Utils;
+using WorldSimAPI.BaseTypes;
+using System.Linq;
 
 namespace WorldSimLib
 {
-    public class Inventory
+ 
+    public class Inventory : InventoryData
     {
-        private Dictionary<string, int> ItemsContainer { get; set; }
-        private Dictionary<string, float> ItemsAverageCostLedger { get; set; }
+        const int MaxSlotSize = 50;
 
         public Inventory()
         {
-            ItemsContainer = new Dictionary<string, int>();
-            ItemsAverageCostLedger = new Dictionary<string, float>();
+            ItemsContainer = new Dictionary<string, InventoryRecordCollection>();
         }
 
-        public void AddToInventory(Item item, int qty)
+        public int GetQuantityOfItem( string itemName )
         {
-            if (!ItemsContainer.TryAdd(item.Name, qty))
-                ItemsContainer[item.Name] += qty;
-        }
-
-        public void RemoveFromInventory(Item item, int qty)
-        {
-            if (ItemsContainer.ContainsKey(item.Name))
-                ItemsContainer[item.Name] -= qty;
-        }
-
-        public void AddToInventory(string itemName, int qty, float pricePerUnit = float.PositiveInfinity)
-        {
-            var item = GameOracle.Instance.GameData.ItemFromName(itemName);
-
-            if (!ItemsContainer.TryAdd(item.Name, qty))
-                ItemsContainer[item.Name] += qty;
-
-            if (pricePerUnit != float.PositiveInfinity)
-            {
-                if (!ItemsAverageCostLedger.ContainsKey(itemName))
-                {
-                    ItemsAverageCostLedger[itemName] = pricePerUnit;
-                }
-                else
-                {
-                    var totalPrice = ItemsAverageCostLedger[itemName] + pricePerUnit;
-                    var totalQty = ItemsContainer[itemName]; // Since we added the value already at the start
-                    ItemsAverageCostLedger[itemName] = totalPrice / totalQty;
-                }
-            }
-        }
-
-        public void RemoveFromInventory(string itemName, int qty, float pricePerUnit = float.PositiveInfinity)
-        {
-            if (ItemsContainer.ContainsKey(itemName))
-            {
-                ItemsContainer[itemName] = Math.Min(0, ItemsContainer[itemName] - qty);
-            }
-
-            if (pricePerUnit != float.PositiveInfinity)
-            {
-                if (!ItemsAverageCostLedger.ContainsKey(itemName))
-                {
-                    ItemsAverageCostLedger[itemName] = -pricePerUnit;
-                }
-                else
-                {
-                    var totalPrice = ItemsAverageCostLedger[itemName] - pricePerUnit;
-                    var totalQty = ItemsContainer[itemName] + qty;
-                    ItemsAverageCostLedger[itemName] = totalPrice / totalQty;
-                }
-            }
-        }
-
-        public int GetQuantityOfItem(string itemName)
-        {
-            if (ItemsContainer.ContainsKey(itemName))
-                return ItemsContainer[itemName];
-            else
+            if (!ItemsContainer.ContainsKey(itemName))
                 return 0;
+
+            var collectionForItem = ItemsContainer[itemName];
+
+            return collectionForItem.Sum(pred => pred.Quantity);
+        }
+
+        public int InventorySpaceLeft(string itemName)
+        {
+            var currentQty = GetQuantityOfItem(itemName);
+            return MaxSlotSize - currentQty;
+        }
+
+
+        public void AddToInventory(string itemName, int qty, float pricePerUnit )
+        {           
+            if (!ItemsContainer.TryAdd(itemName, new InventoryRecordCollection()))
+                ItemsContainer[itemName].Add(new InventoryRecord(itemName, pricePerUnit * qty, qty));
+            else
+                ItemsContainer[itemName].Add(new InventoryRecord(itemName, pricePerUnit * qty, qty));
+
+        }
+
+        public float RemoveFromInventory(string itemName, int qty)
+        {
+            float totalCost = 0.0f;
+            int qtyLeftToRemove = qty;
+
+            if (!ItemsContainer.ContainsKey(itemName))
+                return 0;
+
+            var collectionForItem = ItemsContainer[itemName].SortByCostPerUnit();
+
+            foreach( var inventoryRecord in collectionForItem )
+            {
+                if( inventoryRecord.Quantity > qtyLeftToRemove )
+                {
+                    var amountToRemove = qtyLeftToRemove;
+                    inventoryRecord.Quantity -= amountToRemove;
+                    qtyLeftToRemove -= amountToRemove;
+                    totalCost += inventoryRecord.CostPerUnit * qtyLeftToRemove;
+                }
+                else
+                {
+                    totalCost += inventoryRecord.CostPerUnit * inventoryRecord.Quantity;
+                    qtyLeftToRemove -= inventoryRecord.Quantity;
+                    inventoryRecord.Quantity = 0;
+                }
+
+                if (qtyLeftToRemove == 0)
+                    break;
+            }
+
+            // Remove empty records
+            collectionForItem.RemoveAll(pred => pred.Quantity <= 0);
+
+            ItemsContainer[itemName] = collectionForItem;
+
+            return totalCost;
         }
 
         public bool ContainsItem(string itemName)
@@ -85,11 +87,33 @@ namespace WorldSimLib
             return ItemsContainer.ContainsKey(itemName);
         }
 
+        public bool ContainsItemAndQtyOfType(ItemType itemType, int qty)
+        {
+            foreach( var item in ItemsContainer.Keys )
+            {
+                var itemObj = GameOracle.Instance.GameData.ItemFromName(item);
+                if (itemType == itemObj.IType && ContainsItemAndQty(item,qty))
+                    return true;
+            }
+            return false;
+        }
+
+        public Item GetItemOfType(ItemType itemType)
+        {
+            foreach (var item in ItemsContainer.Keys)
+            {
+                var itemObj = GameOracle.Instance.GameData.ItemFromName(item);
+                if (itemType == itemObj.IType)
+                    return itemObj;
+            }
+            return null;
+        }
+
         public bool ContainsItemAndQty(string itemName, int qty)
         {
             if (!ContainsItem(itemName)) return false;
 
-            if (ItemsContainer[itemName] < qty)
+            if (GetQuantityOfItem(itemName) < qty)
                 return false;
 
             return true;
@@ -98,7 +122,7 @@ namespace WorldSimLib
         {
             if (!ContainsItem(itemName)) return idealAmt;
 
-            int amt = ItemsContainer[itemName];
+            int amt = GetQuantityOfItem(itemName);
 
             if (amt < idealAmt)
             {
@@ -107,11 +131,47 @@ namespace WorldSimLib
             return 0;
         }
 
+        public void Merge(Inventory other)
+        {
+            foreach( var item in other.ItemsContainer)
+            {
+                if( ItemsContainer.ContainsKey( item.Key ) )
+                {
+                    ItemsContainer[item.Key].AddRange(item.Value);
+                }
+            }
+        }
+        public float GetTotalWorthForItem(string itemName)
+        {
+            float totalWorth = 0;
+
+            if (!ContainsItem(itemName))
+                return totalWorth;
+
+            foreach( var record in ItemsContainer[itemName])
+            {
+                totalWorth += record.Quantity * record.CostPerUnit;
+            }
+            return totalWorth;
+        }
+
+        public float GetTotalWorth()
+        {
+            float totalWorth = 0;
+            foreach (var entry in ItemsContainer)
+            {
+                foreach (var record in entry.Value)
+                {
+                    totalWorth += record.Quantity * record.CostPerUnit;
+                }
+            }
+            return totalWorth;
+        }
         public int Surplus(string itemName, int idealAmt = 1)
         {
             if (!ContainsItem(itemName)) return 0;
 
-            int amt = ItemsContainer[itemName];
+            int amt = GetQuantityOfItem(itemName);
 
             if (amt > idealAmt)
             {
@@ -131,46 +191,51 @@ namespace WorldSimLib
             return true;
         }
 
-        public float EstimateRecipeCost(Recipe recipe)
+        public float GetLowestCostForItem(string itemName)
+        {
+            if (!ItemsContainer.ContainsKey(itemName))
+                throw new Exception("Item is not in the inventory and is requested for lowest price");
+
+            return ItemsContainer[itemName].GetCheapestPrice();
+        }
+
+        public float EstimateRecipeCost(Recipe recipe, MarketPlace market)
         {
             float totalInputMaterialCost = 0.0f;
 
             foreach (var input in recipe.Inputs)
             {
-                if (ItemsAverageCostLedger.ContainsKey(input.ItemName))
-                    totalInputMaterialCost += ItemsAverageCostLedger[input.ItemName] * input.Quantity;
+                float averageInputPrice = market.GetAveragePrice(input.ItemName);
+                totalInputMaterialCost += input.Quantity * averageInputPrice;
             }
 
             return totalInputMaterialCost;
         }
-        //public void ProcessRecipe(Recipe recipe)
-        //{
-        //    if (!CanProcessRecipe(recipe))
-        //        return;
+        public void ProcessRecipe(Recipe recipe, float laborCost = 0)
+        {
+            if (!CanProcessRecipe(recipe))
+                return;
 
-        //    float totalInputMaterialCost = 0.0f;
+            float totalInputMaterialCost = 0.0f;
 
-        //    // Remove the inputs required
-        //    foreach (var input in recipe.Inputs)
-        //    {
-        //        // Only add items in that we consumed during making
-        //        if (Random. <= input.ChanceOfConsuming)
-        //        {
-        //            if (ItemsAverageCostLedger.ContainsKey(input.ItemName))
-        //                totalInputMaterialCost += ItemsAverageCostLedger[input.ItemName] * input.Quantity;
+            // Remove the inputs required
+            foreach (var input in recipe.Inputs)
+            {
+                // Only add items in that we consumed during making
+                if (StaticRandom.Instance.NextDouble() <= input.ChanceOfConsuming)
+                {
+                    totalInputMaterialCost += RemoveFromInventory(input.ItemName, input.Quantity);
+                }
+            }
 
-        //            RemoveFromInventory(input.ItemName, input.Quantity);
-        //        }
-        //    }
+            totalInputMaterialCost += laborCost;
 
-        //    // Put the output into the inventory
-        //    foreach (var output in recipe.Outputs)
-        //    {
-        //        AddToInventory(output.ItemName, output.Quantity, totalInputMaterialCost / output.Quantity);
-        //        //Debug.LogFormat("Created: {0} of {1}", output.Quantity, output.ItemName);
-        //    }
-
-
-        //}
+            // Put the output into the inventory
+            foreach (var output in recipe.Outputs)
+            {
+                AddToInventory(output.ItemName, output.Quantity, totalInputMaterialCost / output.Quantity);
+                Console.WriteLine("Created: {0} of {1}", output.Quantity, output.ItemName);
+            }
+        }
     }
 }

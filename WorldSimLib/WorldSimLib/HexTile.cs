@@ -6,6 +6,7 @@ using System.Linq;
 using MoreLinq.Extensions;
 using WorldSimAPI;
 using WorldSimLib.DataObjects;
+using System.Text;
 
 namespace WorldSimLib
 {
@@ -207,21 +208,23 @@ namespace WorldSimLib
 
         public override string ToString()
         {
-            string retStr = "Hex Tile: \n";
+            StringBuilder sb = new StringBuilder();
 
-            retStr += "position: " + position + "\n";
-            retStr += "tileType: " + tileType + "\n";
-            retStr += "baseTemperature: " + baseTemperature + "\n";
-            retStr += "temperature: " + temperature + "\n";
-            retStr += "humidity: " + humidity + "\n";
-            retStr += "windDirection: " + windDirection + "\n";
-            retStr += "windSpeed: " + windSpeed + "\n";
-            retStr += "continentID: " + continentID + "\n";
-            retStr += "elevation: " + elevation + "\n";
-            //retStr += "isOccupied: " + isOccupied + "\n";
+            sb.AppendLine("Hex Tile:");
+            sb.AppendLine($"Position: {position}");
+            sb.AppendLine($"Tile Type: {tileType}");
+            sb.AppendLine($"Base Temperature: {baseTemperature}");
+            sb.AppendLine($"Temperature: {temperature}");
+            sb.AppendLine($"Humidity: {humidity}");
+            sb.AppendLine($"Wind Direction: {windDirection}");
+            sb.AppendLine($"Wind Speed: {windSpeed}");
+            sb.AppendLine($"Continent ID: {continentID}");
+            sb.AppendLine($"Elevation: {elevation}");
+            //sb.AppendLine($"Is Occupied: {isOccupied}");
 
-            return retStr;
+            return sb.ToString();
         }
+
     }
 
 }

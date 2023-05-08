@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-
+using WorldSimAPI.ContentMsg;
 
 namespace WorldSimLib
 {
@@ -23,6 +23,8 @@ namespace WorldSimLib
         public float pricePerUnit;
         public bool IsMarketOrder { get; set; }
         float _clearingPrice;
+
+        public string issue;
 
         public bool IsProcessed
         {
@@ -66,17 +68,31 @@ namespace WorldSimLib
             retStr += "itemName: ";
             retStr += itemName + "\n";
 
+            retStr += "ownerName: ";
+            retStr += owner.Name + "\n";
+
             retStr += "pricePerUnit: ";
             retStr += pricePerUnit + "\n";
 
             retStr += "qty: ";
             retStr += qty + "\n";
 
+            retStr += "oriQty: ";
+            retStr += origQty + "\n";
+
             retStr += "duration: ";
             retStr += duration + "\n";
 
             retStr += "age: ";
             retStr += age + "\n";
+
+            retStr += "type: ";
+            retStr += offerType == OfferType.Buy ? "Buy" : "Sell";
+
+            retStr += "issue: ";
+            retStr += issue + "\n";
+
+            retStr += "\n";
 
             return retStr;
         }
@@ -96,6 +112,23 @@ namespace WorldSimLib
         {
             this._clearingPrice = clearingPrice;
             this.IsProcessed = true;
+        }
+
+        public OfferContentMsg ToContentMsg()
+        {
+            OfferContentMsg retMsg = new OfferContentMsg();
+
+            retMsg.Duration = this.duration;
+            retMsg.Qty = this.qty;
+            retMsg.PricePerUnit = this.pricePerUnit;
+            retMsg.IsMarketOrder= this.IsMarketOrder;
+            retMsg.Age = this.age;
+            retMsg.ItemName = this.itemName;
+            retMsg.OfferType = this.offerType == OfferType.Buy ? "Buy" : "Sell";
+            retMsg.OrigQty = this.origQty;
+            retMsg.OwnerName = this.owner.Name;
+
+            return retMsg;
         }
     }
 

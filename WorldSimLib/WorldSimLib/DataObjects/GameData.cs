@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace WorldSimLib.DataObjects
@@ -11,15 +12,38 @@ namespace WorldSimLib.DataObjects
         public List<Recipe> Recipes { get; set; }
         public List<Resource> Resources { get; set; }
         public List<PopNeed> PopNeeds { get; set; }
+        public List<PopAction> PopActions { get; set; }
+        public List<PopTask> PopTasks { get; set; }
+
+        public List<PopTechnology> PopTechnologies { get; set; }
+
+        public void Prime()
+        {
+            PopNeed.Prime(this, PopNeeds);
+            PopAction.Prime(this, PopActions);
+            PopTask.Prime(this, PopTasks);
+            PopTechnology.Prime(this, PopTechnologies);
+            Recipe.Prime(this, Recipes);
+        }
 
         public Item ItemFromName(string name)
         {
             return Items.Find(pred => pred.Name == name);
         }
 
+        public PopTechnology TechnologyFromName(string name)
+        {
+            return PopTechnologies.Find(pred => pred.Name == name);
+        }
+
         public AgentType AgentTypeFromName(string name)
         {
             return AgentTypes.Find(pred => pred.Name == name);
+        }
+
+        public AgentType AgentTypeForResource(Resource resource)
+        {
+            return AgentTypes.Find(pred => pred.Recipes.Any(pred => pred.RequiresResource(resource)));
         }
 
         public AgentType AgentTypeForItem(string itemName)

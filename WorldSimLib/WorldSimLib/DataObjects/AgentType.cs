@@ -1,6 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.Linq;
 
 namespace WorldSimLib.DataObjects
 {
@@ -11,6 +12,34 @@ namespace WorldSimLib.DataObjects
         public float ChanceOfFailure { get; set; }
         public List<RecipeInput> Inputs { get; set; }
         public List<RecipeOuput> Outputs { get; set; }
+        public List<string> ResourcesRequired { get; set; }
+        public List<Resource> ResourcesRequiredAsObjects { get; set; }
+
+        public bool RequiresResource( Resource resource )
+        {
+            return ResourcesRequiredAsObjects.Any(pred => pred.Name == resource.Name);
+        }
+        public static void Prime(GameData data, List<Recipe> recipesToPrime)
+        {
+            foreach (var recipe in recipesToPrime)
+            {
+                recipe.ResourcesRequiredAsObjects = new List<Resource>();
+
+                foreach (var resourceName in recipe.ResourcesRequired)
+                {
+                    var resourceObj = data.Resources.Find(pred => pred.Name == resourceName);
+
+                    if (resourceObj != null)
+                    {
+                        recipe.ResourcesRequiredAsObjects.Add(resourceObj);
+                    }
+                    else
+                    {
+                        Console.WriteLine("ERROR: Failed to find popTech for id: " + resourceName);
+                    }
+                }
+            }
+        }
 
         public override string ToString()
         {
@@ -90,8 +119,14 @@ namespace WorldSimLib.DataObjects
         public string Name { get; set; }
         public List<string> RecipeNames { get; set; }
 
+        public int RequiredWorkers { get; set; }
+
         public float StartingGold { get; set; }
         public List<InventorySlot> StartingInventory { get; set; }
+
+        public int TurnsToBuild { get; set; }
+
+        public int Level { get; set; }
 
         public List<Recipe> Recipes
         {

@@ -10,8 +10,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\WorldSim\AccidentalNoiseLibrary\TinkerWorX.AccidentalNoiseLibrary.csproj" />
-    <ProjectReference Include="..\..\WorldSim\WorldSimAPI\WorldSimAPI.csproj" />
+    <ProjectReference Include="..\..\AccidentalNoiseLibrary\TinkerWorX.AccidentalNoiseLibrary.csproj" />
+    <ProjectReference Include="..\..\NameGenerator\ProceduralNameGenerator.csproj" />
+    <ProjectReference Include="..\..\WorldSimAPI\WorldSimAPI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

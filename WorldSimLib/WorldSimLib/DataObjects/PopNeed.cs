@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace WorldSimLib.DataObjects
@@ -12,7 +13,18 @@ namespace WorldSimLib.DataObjects
 
     public class PopNeed
     {
-        public float WealthLevel { get; set; }
-        public List<PopItemNeed> PopItemNeeds { get; set; }
+        public string ID { get; set; }
+        public string Name { get; set; }
+
+        public int MinSOLLevel { get; set; }
+
+        public int MaxSOLLevel { get; set; }
+
+        public List<ItemType> AssociatedItemTypes { get; set; }
+
+        public static void Prime( GameData data, List<PopNeed> needsToPrime )
+        {
+           
+        }
     }
 }

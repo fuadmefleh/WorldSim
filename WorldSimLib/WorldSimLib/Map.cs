@@ -8,6 +8,7 @@ using TinkerWorX.AccidentalNoiseLibrary;
 
 using WorldSimAPI;
 using WorldSimLib.DataObjects;
+using System.Linq;
 
 namespace WorldSimLib
 {
@@ -89,11 +90,11 @@ namespace WorldSimLib
 
         int TerrainOctaves = 6;
         double TerrainFrequency = 1.25;
-        float DeepWaterLevel = 0.2f;
-        float ShallowWaterLevel = 0.4f;
-        float DirtLevel = 0.5f;
-        float HillsLevel = 0.65f;
-        float HighlandsLevel = 0.8f;
+        float DeepWaterLevel_Default = 0.2f;
+        float ShallowWaterLevel_Default = 0.4f;
+        float DirtLevel_Default = 0.5f;
+        float HillsLevel_Default = 0.65f;
+        float HighlandsLevel_Default = 0.8f;
 
         int HeatOctaves = 4;
         double HeatFrequency = 3.0;        
@@ -226,6 +227,36 @@ namespace WorldSimLib
 
         }
 
+        public List<HexTile> GetTilesWithinRadius(Vector3 centerPosition, float radius)
+        {
+            Dictionary<Vector3, HexTile> tileLookup = TileData.ToDictionary(t => t.position);
+            List<HexTile> tilesWithinRadius = new List<HexTile>();
+
+            int centerX = (int)centerPosition.X;
+            int centerY = (int)centerPosition.Y;
+            int centerZ = (int)centerPosition.Z;
+
+            for (int dx = -(int)Math.Floor(radius); dx <= (int)Math.Floor(radius); dx++)
+            {
+                for (int dy = -(int)Math.Floor(radius); dy <= (int)Math.Floor(radius); dy++)
+                {
+                    for (int dz = -(int)Math.Floor(radius); dz <= (int)Math.Floor(radius); dz++)
+                    {
+                        if (dx + dy + dz == 0)
+                        {
+                            Vector3 currentPosition = new Vector3(centerX + dx, centerY + dy, centerZ + dz);
+
+                            if (tileLookup.ContainsKey(currentPosition))
+                            {
+                                tilesWithinRadius.Add(tileLookup[currentPosition]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return tilesWithinRadius;
+        }
 
 
         float CalculateLatitude(int yPos)
@@ -255,7 +286,7 @@ namespace WorldSimLib
 
                     foreach( Resource resource in GameOracle.Instance.GameData.Resources)
                     {
-                        if( resource.HeightTypes.Contains(curTile.HeightType) && resource.Biomes.Contains( curTile.BiomeType ) )
+                        if( resource.HeightTypes.Contains(curTile.HeightType) && resource.Biomes.Contains( curTile.BiomeType ) && resource.IsWorldGenerated )
                         {
                             curTile.AvailableResourceSources.Add(resource, 40);
                         } 
@@ -268,26 +299,23 @@ namespace WorldSimLib
         void AssignTileType(HexTile curTile)
         {
             // Normalize Elevation         
-            if (curTile.elevation < DeepWaterLevel)
+            if (curTile.elevation < DeepWaterLevel_Default)
                 curTile.HeightType = HeightType.DeepWater;
-            else if (curTile.elevation < ShallowWaterLevel)
+            else if (curTile.elevation < ShallowWaterLevel_Default)
                 curTile.HeightType = HeightType.ShallowWater;
-            else if (curTile.elevation < DirtLevel)
+            else if (curTile.elevation < DirtLevel_Default)
                 curTile.HeightType = HeightType.Dirt;
-            else if (curTile.elevation < HillsLevel)
+            else if (curTile.elevation < HillsLevel_Default)
                 curTile.HeightType = HeightType.Hills;
-            else if (curTile.elevation < HighlandsLevel)
+            else if (curTile.elevation < HighlandsLevel_Default)
                 curTile.HeightType = HeightType.Highlands;
             else
                 curTile.HeightType = HeightType.Mountain;
-
 
             if (curTile.HeightType == WorldSimAPI.HeightType.DeepWater || curTile.HeightType == HeightType.ShallowWater )
                 curTile.Collidable = false;
             else
                 curTile.Collidable = true;
-
-
 
             //adjust moisture based on height
             if (curTile.HeightType == HeightType.DeepWater)
@@ -424,19 +452,19 @@ namespace WorldSimLib
                     tileData[tileIdx].elevation = curElevation;
 
                     // Adjust Heat Map based on Height - Higher == colder
-                    if (curTile.elevation < ShallowWaterLevel)
+                    if (curTile.elevation < ShallowWaterLevel_Default)
                     {
                         curTile.baseTemperature += 0.01f * curTile.elevation;
                     }
-                    else if (curTile.elevation < DirtLevel)
+                    else if (curTile.elevation < DirtLevel_Default)
                     {
                         curTile.baseTemperature -= 0.1f * curTile.elevation;
                     }
-                    else if (curTile.elevation < HillsLevel)
+                    else if (curTile.elevation < HillsLevel_Default)
                     {
                         curTile.baseTemperature -= 0.2f * curTile.elevation;                     
                     }
-                    else if (curTile.elevation == HighlandsLevel)
+                    else if (curTile.elevation == HighlandsLevel_Default)
                     {
                         curTile.baseTemperature -= 0.3f * curTile.elevation;                        
                     }
@@ -570,6 +598,43 @@ namespace WorldSimLib
             tile.windSpeed = randomGenerator.Range(0.9f, 4.5f);
         }
 
+        public Vector3 CalculateHeatSourcePosition(float elapsedTime)
+        {
+            //256 is the number of days to complete an orbit
+            float orbitRadius = 1000f; // adjust this value to change the radius of the orbit
+            float orbitSpeed = 2f * MathF.PI / 256f; // adjust this value to change the speed of the orbit
+
+            // Calculate the angle of the heat source based on the elapsed time and orbit speed
+            float angle = elapsedTime * orbitSpeed;
+
+            // Calculate the x and z positions of the heat source based on the angle and orbit radius
+            float x = orbitRadius * MathF.Cos(angle);
+            float z = orbitRadius * MathF.Sin(angle);
+
+            // The y position of the heat source can be set to a fixed value, or adjusted to simulate changes in the height of the orbit
+            float y = 500f;
+
+            // Return the position of the heat source
+            return new Vector3(x, y, z);
+        }
+
+        public float CalculateRotationAngle(float time, float dayLength, float axialTilt)
+        {
+            // Calculate the fraction of a full day that has passed
+            float fractionOfDay = time / dayLength;
+
+            // Calculate the angle of rotation around the planet's axis
+            float rotationAngle = fractionOfDay * 360f;
+
+            // Calculate the tilt angle
+            float tiltAngle = axialTilt * MathF.Sin((2f * MathF.PI * fractionOfDay) - (MathF.PI / 2f));
+
+            // Apply the tilt angle to the rotation angle
+            rotationAngle += tiltAngle;
+
+            return rotationAngle;
+        }
+
         void GenerateHeatMap()
         {
             ImplicitGradient gradient = new ImplicitGradient(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1);
@@ -583,8 +648,6 @@ namespace WorldSimLib
 
                     if (tileIdx == -1)
                         continue;
-
-
                 }
             }
         }
@@ -628,6 +691,47 @@ namespace WorldSimLib
         }
 
         void Circulate(HexTile curTile)
+        {
+            //float tempDelta = curTile.temperature - 50;
+            //float tempRatio = tempDelta / tempRange;
+
+            //// Calculate air mass movement based on temperature gradient
+            //float xMovement = 0f;
+            //float yMovement = 0f;
+
+            //if (tempRatio > 0.5f)
+            //{
+            //    xMovement = tempRatio * 2f;
+            //}
+            //else
+            //{
+            //    yMovement = (0.5f - tempRatio) * 2f;
+            //}
+
+            //// Move air mass to neighboring tiles
+            //foreach (var neighbor in curTile.adjacentTiles)
+            //{
+            //    float xDiff = neighbor.position.X - curTile.position.X;
+            //    float yDiff = neighbor.position.Y - curTile.position.Y;
+
+            //    if (MathF.Abs(xDiff) <= 1f && MathF.Abs(yDiff) <= 1f)
+            //    {
+            //        float distance = MathF.Sqrt(xDiff * xDiff + yDiff * yDiff);
+
+            //        if (distance > 0f)
+            //        {
+            //            float xAmt = xMovement / distance;
+            //            float yAmt = yMovement / distance;
+
+            //            neighbor.airMass.x += xAmt * timeStep;
+            //            neighbor.airMass.y += yAmt * timeStep;
+            //        }
+            //    }
+            //}
+        }
+
+
+        void CirculateOld(HexTile curTile)
         {
             List<HexTile> neighborsToDiffuseTo = new List<HexTile>();
 
@@ -946,7 +1050,30 @@ namespace WorldSimLib
 
         public List<HexTile> GetSuitablePopStartPoints()
         {
-            return tileData.FindAll(pred => pred.Collidable);
+            List<BiomeType> suitableBiomes = new List<BiomeType>();
+            suitableBiomes.Add(BiomeType.Savanna);
+            suitableBiomes.Add(BiomeType.TropicalRainforest);
+            suitableBiomes.Add(BiomeType.Grassland);
+            suitableBiomes.Add(BiomeType.Woodland);
+            suitableBiomes.Add(BiomeType.BorealForest);
+            suitableBiomes.Add(BiomeType.TemperateRainforest);
+            suitableBiomes.Add(BiomeType.Tundra);
+            suitableBiomes.Add(BiomeType.SeasonalForest);
+
+            List<HeightType> suitableHeightTypes = new List<HeightType>();
+            suitableHeightTypes.Add(HeightType.Highlands);
+            suitableHeightTypes.Add(HeightType.Scrublands);
+            suitableHeightTypes.Add(HeightType.Dirt);
+            suitableHeightTypes.Add(HeightType.Forest);
+            suitableHeightTypes.Add(HeightType.Grass);
+            suitableHeightTypes.Add(HeightType.Hills);
+
+            return tileData.FindAll( (pred) => {
+                if (pred.Collidable && suitableBiomes.Contains(pred.BiomeType) )
+                    return true;
+
+                return false;
+            });
         }
 
         private int Convert2DToIndex(int x, int y)

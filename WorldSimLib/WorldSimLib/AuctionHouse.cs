@@ -4,6 +4,9 @@ using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using WorldSimLib.DataObjects;
+using WorldSimAPI;
+using WorldSimAPI.ContentMsg;
+using System.Text;
 
 namespace WorldSimLib
 {
@@ -13,6 +16,7 @@ namespace WorldSimLib
 		public float moneyTraded;          //amount of money traded this round
 		public float unitsTraded;            //amount of goods traded this round
 		public float avgPrice;               //avg clearing price this round
+		public float taxCollected;
 
 		public override string ToString()
 		{
@@ -21,12 +25,13 @@ namespace WorldSimLib
 			retStr += "\nMoney Traded: " + moneyTraded.ToString();
 			retStr += "\nUnits Traded: " + unitsTraded.ToString();
 			retStr += "\nAverage Price: " + avgPrice.ToString();
-			retStr += "\n";
+			retStr += "\nTax Collected: " + taxCollected.ToString();
+            retStr += "\n";
 
 			return retStr;
 		}
 	}
-	public class MarketPlace
+	public class MarketPlace : GameAgent
 	{
 		// List<Offer> allHistoricalOffers;
 		List<Offer> allActiveOffers;
@@ -35,9 +40,15 @@ namespace WorldSimLib
 
 		Dictionary<uint, Dictionary<uint, List<Offer>>> cachedData;
 
+		public float TaxRate { get; set; }
+
+		public List<Offer> AllActiveOffers { get { return allActiveOffers; } }
+        
 		float MAX_BID_ASK_SPREAD = 0.25f;
 
-		public MarketPlace()
+
+
+		public MarketPlace() : base("Marketplace")
 		{
 			allHistoricalOffers = new Dictionary<uint, List<Offer>>();
 			allActiveOffers = new List<Offer>();
@@ -47,7 +58,67 @@ namespace WorldSimLib
 			cachedData = new Dictionary<uint, Dictionary<uint, List<Offer>>>();
 		}
 
-		public Dictionary<uint, List<Offer>> GetCachedDataForTurn(uint turnNumber)
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine("All Active Offers:");
+			if (allHistoricalOffers.Count == 0)
+				return sb.ToString();
+
+			var offers = allHistoricalOffers[allHistoricalOffers.Keys.Max()];
+			offers.Sort((a, b) => a.itemName.CompareTo(b.itemName));
+
+            foreach (var offer in offers)
+            {
+                sb.AppendLine(offer.ToString());
+            }
+
+            return sb.ToString();
+        }
+
+        public MarketContentMsg ToContentMsg()
+		{
+			MarketContentMsg msg = new MarketContentMsg();
+
+			msg.AllActiveOffers = allActiveOffers.ConvertAll(pred => pred.ToContentMsg());
+
+			return msg;
+		}
+
+        // Add the GetTotalBuyQuantity function
+        public int GetTotalBuyQuantity(string itemName)
+        {
+            int totalBuyQuantity = 0;
+
+            foreach (Offer offer in OffersOverPeriod(1))
+            {
+                if (offer.offerType == OfferType.Buy && offer.itemName == itemName)
+                {
+                    totalBuyQuantity += offer.qty;
+                }
+            }
+
+            return totalBuyQuantity;
+        }
+
+        // Add the GetTotalSellQuantity function
+        public int GetTotalSellQuantity(string itemName, uint lookback =1 )
+        {
+            int totalSellQuantity = 0;
+
+            foreach (Offer offer in OffersOverPeriod(lookback))
+            {
+                if (offer.offerType == OfferType.Sell && offer.itemName == itemName)
+                {
+                    totalSellQuantity += offer.qty;
+                }
+            }
+
+            return totalSellQuantity;
+        }
+
+        public Dictionary<uint, List<Offer>> GetCachedDataForTurn(uint turnNumber)
 		{
 			if (!cachedData.ContainsKey(turnNumber))
 			{
@@ -152,23 +223,46 @@ namespace WorldSimLib
 			return runningTotal / allProccessedOffersForItem.Count;
 		}
 
-		public float GetAverageSellPrice(string itemName, uint lookback = 1)
+
+        public float GetAverageSellPrice(string itemName, uint lookback = 1)
 		{
 			var allSellsOverPeriod = SellsOverPeriod(lookback);
 
 			var allSellsForItem = allSellsOverPeriod.FindAll(pred => pred.itemName == itemName);
 
 			if (allSellsForItem.Count == 0)
-				return 1;
+				return 0.1f;
 
-			float runningTotal = 0.0f;
-
-			allSellsForItem.ForEach(pred => runningTotal += pred.pricePerUnit);
-
-			return runningTotal / allSellsForItem.Count;
+			return allSellsForItem.Average(pred => pred.pricePerUnit);
 		}
 
-		public float GetAverageBuyPrice(string itemName, uint lookback = 1)
+		public Item GetAvailableItemWithType(ItemType itemType)
+		{
+			foreach( var offer in OffersOverPeriod(1))
+			{
+				var item = GameOracle.Instance.GameData.ItemFromName(offer.itemName);
+
+				if (item.IType == itemType)
+					return item;
+			}
+
+			return null;
+		}
+
+        public float GetHighestSellPrice(string itemName, uint lookback = 1)
+        {
+            var allSellsOverPeriod = SellsOverPeriod(lookback);
+
+            var allSellsForItem = allSellsOverPeriod.FindAll(pred => pred.itemName == itemName);
+
+            if (allSellsForItem.Count == 0)
+                return 1;
+
+			return allSellsForItem.Max(pred => pred.pricePerUnit);
+        }
+
+
+        public float GetAverageBuyPrice(string itemName, uint lookback = 1)
 		{
 			var allOffersOverPeriod = OffersOverPeriod(lookback);
 
@@ -203,7 +297,7 @@ namespace WorldSimLib
 
 			foreach (var input in recipe.Inputs)
 			{
-				var averageCostOfItem = GetAverageSellPrice(input.ItemName, 10);
+				var averageCostOfItem = GetAverageSellPrice(input.ItemName, 3);
 				totalInputMaterialCost += averageCostOfItem * input.Quantity;
 			}
 
@@ -223,7 +317,7 @@ namespace WorldSimLib
 			return totalInputMaterialCost;
 		}
 
-		private void ProcessTransaction(Offer buyOffer, Offer sellOffer, float clearing_price, ref RoundData rd)
+		private void ProcessTransaction(Offer buyOffer, Offer sellOffer, float clearing_price, float tax, ref RoundData rd)
 		{
 			int buyer_qty = buyOffer.qty;
 
@@ -235,18 +329,17 @@ namespace WorldSimLib
 				sellOffer.qty -= quantity_traded;
 				buyOffer.qty -= quantity_traded;
 
-				TransferGood(buyOffer.itemName, quantity_traded, clearing_price, sellOffer.owner, buyOffer.owner);
-				TransferMoney(quantity_traded * clearing_price, sellOffer.owner, buyOffer.owner);
+				TransferGood(buyOffer.itemName, quantity_traded, clearing_price + tax, sellOffer.owner, buyOffer.owner);
+				TransferMoney(quantity_traded * clearing_price, quantity_traded * tax, sellOffer.owner, buyOffer.owner);
 
-				//update agent price beliefs based on successful transaction				
-				//(buyOffer.owner as GameAgent).UpdatePriceModel(OfferType.Buy, buyOffer.itemName, true, clearing_price);
-			//	(sellOffer.owner as GameAgent).UpdatePriceModel(OfferType.Sell, sellOffer.itemName, true, clearing_price);
+				Wallet.Amount += tax * quantity_traded;
 
 				//log the stats
 				rd.moneyTraded += (quantity_traded * clearing_price);
 				rd.unitsTraded += quantity_traded;
 				rd.avgPrice += clearing_price;
-				rd.successfulTrades++;
+				rd.taxCollected += (quantity_traded * tax);
+                rd.successfulTrades++;
 			}
 		}
 
@@ -283,55 +376,6 @@ namespace WorldSimLib
 				numAsks += asks[i].qty;
 			}
 
-			//foreach (var sellOrder in asks)
-			//{
-			//	// Try to find a buyer
-			//	foreach (var buyOrder in bids)
-			//	{
-			//		if (buyOrder.IsProcessed)
-			//			continue;
-
-			//		if (Mathf.Abs(buyOrder.pricePerUnit - sellOrder.pricePerUnit) < MAX_BID_ASK_SPREAD)
-			//		{
-			//			float clearing_price = ExtensionMethods.Average(buyOrder.pricePerUnit, sellOrder.pricePerUnit);
-
-			//			ProcessTransaction(buyOrder, sellOrder, clearing_price, ref rd);
-
-			//			if (buyOrder.qty == 0)     //buyer is out of offered good
-			//			{
-			//				buyOrder.MarkAsProcessed( clearing_price );
-			//			}
-
-			//			if (sellOrder.qty == 0)
-			//			{
-			//				sellOrder.MarkAsProcessed(clearing_price);
-			//				break;
-			//			}
-			//		}
-			//	}
-			//}
-
-			//asks.RemoveAll(pred => pred.IsProcessed == true);
-			//bids.RemoveAll(pred => pred.IsProcessed == true);
-
-			//	//if( matchedBuyOrder != null )
-			//	//{
-
-
-			//	//	if (sellOrder.qty == 0)        //seller is out of offered good
-			//	//	{
-			//	//		sellOrder.IsProcessed = true;
-			//	//		asks.RemoveAt(0);       //remove ask
-			//	//	}
-			//	//	if (matchedBuyOrder.qty == 0)     //buyer is out of offered good
-			//	//	{
-			//	//		matchedBuyOrder.IsProcessed = true;
-			//	//		bids.Remove(matchedBuyOrder);       //remove bid
-			//	//	}
-
-			//		//var clearing_price = ExtensionMethods.Average(sellOrder.pricePerUnit, matchedBuyOrder.pricePerUnit);
-			//}
-
 			// march through and try to clear orders
 			while (bids.Count > 0 && asks.Count > 0)        //while both books are non-empty
 			{
@@ -339,11 +383,38 @@ namespace WorldSimLib
 				Offer seller = asks[0];
 
 				if (buyer.pricePerUnit < seller.pricePerUnit)
-					break;
+				{
+                    break;
+                }
+
+                // Check if this order is bogus and the seller doesn't have the product
+                if ( !seller.owner.Inventory.ContainsItemAndQty( seller.itemName, seller.qty) )
+				{
+					seller.issue = $"Offer for {seller.itemName} from {seller.owner.Name} does not have quantity available to complete offer ({seller.qty}/{seller.owner.Inventory.GetQuantityOfItem(seller.itemName)}";
+					asks.RemoveAt(0);
+					continue;
+				}
 
 				float clearing_price = ExtensionMethods.Average(buyer.pricePerUnit, seller.pricePerUnit);
 
-				ProcessTransaction(buyer, seller, clearing_price, ref rd);
+				// Check if buyer has the funds
+                if (buyer.owner.Wealth < clearing_price * (1 + TaxRate) )
+				{
+					buyer.issue = "Buyer doesn't have sufficient funds for purchase";
+					bids.RemoveAt(0);
+					continue;
+				}
+
+                // Determine the maximum quantity that can be afforded by the buyer
+                int maxAffordableQuantity = (int)(buyer.owner.Wealth / clearing_price);
+
+                // Use the minimum of the affordable quantity and the requested quantity
+                int quantityToProcess = Math.Min(buyer.qty, maxAffordableQuantity);
+
+                // Update buyer's qty to the quantity to process
+                buyer.qty = quantityToProcess;
+
+                ProcessTransaction(buyer, seller, clearing_price, clearing_price * TaxRate, ref rd);
 
 				if (seller.qty == 0)        //seller is out of offered good
 				{
@@ -373,7 +444,6 @@ namespace WorldSimLib
 			{
 				var buyer = bids[0];
 				var buyer_a = buyer.owner;
-				//(buyer_a as GameAgent).UpdatePriceModel(OfferType.Buy, itemName, false);
 
 				bids.RemoveAt(0);
 			}
@@ -382,7 +452,6 @@ namespace WorldSimLib
 			{
 				var seller = asks[0];
 				var seller_a = seller.owner;
-				//(seller_a as GameAgent).UpdatePriceModel(OfferType.Sell, itemName, false);
 
 				asks.RemoveAt(0);
 			}
@@ -393,11 +462,40 @@ namespace WorldSimLib
 
 		private void TransferGood(string itemName, int qty, float pricePerUnit, GameAgent seller, GameAgent buyer)
 		{
-			//seller.Inventory.RemoveFromInventory(itemName, qty);
-			//buyer.Inventory.AddToInventory(itemName, qty);
+			seller.Inventory.RemoveFromInventory(itemName, qty);
+			buyer.Inventory.AddToInventory(itemName, qty, pricePerUnit);
 		}
 
-		public string GetGoodWithMostSupply()
+        public List<string> GetGoodsSortedByDemandToSupplyRatio()
+        {
+            var allItems = GameOracle.Instance.GameData.Items;
+            var asks = SellsOverPeriod(1);
+            var bids = BuysOverPeriod(1);
+
+            var demandToSupplyRatios = new Dictionary<string, float>();
+
+            foreach (var item in allItems)
+            {
+                var itemAsks = asks.FindAll(pred => pred.itemName == item.Name);
+                var itemBids = bids.FindAll(pred => pred.itemName == item.Name);
+
+                float asksQty = 0;
+                float bidsQty = 0;
+
+                itemAsks.ForEach(pred => asksQty += pred.origQty);
+                itemBids.ForEach(pred => bidsQty += pred.origQty);
+
+                if (asksQty > 0)
+                {
+                    demandToSupplyRatios[item.Name] = bidsQty / asksQty;
+                }
+            }
+
+            return demandToSupplyRatios.OrderByDescending(x => x.Value).Select(x => x.Key).ToList();
+        }
+
+
+        public string GetGoodWithMostSupply()
 		{
 			var good_with_most_supply = "";
 			var allItems = GameOracle.Instance.GameData.Items;
@@ -470,10 +568,10 @@ namespace WorldSimLib
 			return best_market;
 		}
 
-		private void TransferMoney(float amount, GameAgent seller, GameAgent buyer)
+		private void TransferMoney(float amount, float tax, GameAgent seller, GameAgent buyer)
 		{
-			//seller.PlayerData.gold += amount;
-			//buyer.PlayerData.gold -= amount;
+			seller.Wealth += amount;
+			buyer.Wealth -= amount + tax;
 		}
 
 		public void PlaceOffer(Offer offer)

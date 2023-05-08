@@ -11,7 +11,13 @@ namespace WorldSimLib.DataObjects
         [Description("Food")]
         Food = 0,
         [Description("Semi")]
-        Semi = 1
+        Semi = 1,
+        [Description("Trade")]
+        Trade = 2,
+        [Description("Clothing")]
+        Clothing = 3,
+        [Description("Fuel")]
+        Fuel = 4
     }
 
     public class Item
@@ -20,6 +26,8 @@ namespace WorldSimLib.DataObjects
         public ItemType IType { get; set; }
 
         public float BaseQty { get; set; }
+        public float QualityOfLife { get; set; }
+        public float NeedFulfillment { get; set; }
 
         public Item(string name, ItemType it)
         {
