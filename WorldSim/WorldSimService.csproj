@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\WorldSimLib\WorldSimLib\WorldSimLib.csproj" />
     <ProjectReference Include="..\WorldSimAPI\WorldSimAPI.csproj" />
+    <ProjectReference Include="..\WorldSimLib\WorldSimLib\WorldSimLib.csproj" />
   </ItemGroup>
 
 </Project>

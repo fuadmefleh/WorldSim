@@ -9,7 +9,7 @@ using WorldSimLib;
 
 namespace WorldSimService.RequestHandlers
 {
-    public class GamePopCentersRequestHandler : RequestHandler
+    public class GamePopCenterRequestHandler : RequestHandler
     {
         public override WorldSimMsg HandleMsg(WorldSimMsg requestMsg)
         {
@@ -24,33 +24,29 @@ namespace WorldSimService.RequestHandlers
                 (int)(msgContent.endPos.Y - msgContent.startPos.Y)
             );
 
-            foreach( var popCenter in gamePopCenters )
+            foreach (var popCenter in gamePopCenters)
             {
                 var pos = popCenter.Location.position;
 
                 // If this requested range contains this pop center
-                if( rangeRect.Contains(new Point((int)pos.X, (int)pos.Y)) )
+                if (rangeRect.Contains(new Point((int)pos.X, (int)pos.Y)))
                 {
                     GamePopCenterContentMsg popCenterContentMsg = new GamePopCenterContentMsg((int)pos.X, (int)pos.Y);
+                    popCenterContentMsg.name = popCenter.Name;
                     popCenterContentMsg.settlementType = popCenter.SettlementLevel;
                     popCenterContentMsg.factoryData = popCenter.Factorys.ConvertAll(x => x.ToContentMsg());
                     popCenterContentMsg.marketContent = popCenter.MarketPlace.ToContentMsg();
+                    popCenterContentMsg.wealth = popCenter.Wealth;
 
-                    foreach ( var gamePop in popCenter.Populations )
+                    foreach (var gamePop in popCenter.Populations)
                     {
-                        GamePopContentMsg popContentMsg = new GamePopContentMsg();
-                        popContentMsg.Culture = gamePop.Culture;
-                        popContentMsg.Quantity = gamePop.Locations[popCenter];
-                        popContentMsg.Occupation = gamePop.Occupation;
-                        popContentMsg.EducationLevel = gamePop.EducationLevel;
-                        popContentMsg.Religion = gamePop.Religion;
-                        popContentMsg.Name = gamePop.Name;
+                        GamePopContentMsg popContentMsg = gamePop.ToContentMsg(popCenter);                      
 
                         popCenterContentMsg.gamePops.Add(popContentMsg);
                     }
 
                     replyMsg.gamePopCenters.Add(popCenterContentMsg);
-                }                
+                }
             }
 
             string json = JsonConvert.SerializeObject(replyMsg);

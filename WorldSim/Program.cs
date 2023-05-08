@@ -9,6 +9,8 @@ using Newtonsoft.Json;
 using WorldSimAPI;
 using WorldSimService;
 using WorldSimService.RequestHandlers;
+using WorldSimAPI.ContentMsg;
+using System.IO;
 
 namespace Example
 {
@@ -23,6 +25,10 @@ namespace Example
             messageRouter.Add("MAP_UPDATE", new MapUpdateRequestHandler());
             messageRouter.Add("TILE_INFO", new TileInfoRequestHandler());
             messageRouter.Add("POP_UPDATE", new GamePopCentersRequestHandler());
+            messageRouter.Add("POP_CENTER_INFO", new GamePopCenterRequestHandler());
+            messageRouter.Add("MARKET_INFO", new MarketInfoRequestHandler());
+            messageRouter.Add("TURN_NUMBER", new TurnNumberRequestHandler());
+            messageRouter.Add("NEW_USER", new UserAuthRequestHandler());
 
         }
 
@@ -48,9 +54,11 @@ namespace Example
 
     public class Program
     {
+        public static WebSocketServer wssv;
+
         public static void Main(string[] args)
         {
-            var wssv = new WebSocketServer(2567);
+            wssv = new WebSocketServer(2567);
             wssv.AddWebSocketService<Laputa>("/Laputa");
             wssv.Start();
 
@@ -58,53 +66,58 @@ namespace Example
             go.LoadGameAssets("./");
             go.CreateNewGame();
 
-            //var selectedTile = go.gameMap.TileAtMapPos(5, 5);
-
-            // Make some of all the agent types
-           // var agentTypes = GameOracle.Instance.GameData.AgentTypes;
-
-            //Community community = new Community("Village 1");
-
-            //community.Position = selectedTile.position;
-
-            //foreach (var agentType in agentTypes)
-            //{
-            //    for (int i = 0; i < 50; i++)
-            //    {
-            //        GameAgent ga = new GameAgent(agentType.Name + " " + i.ToString(), agentType, GameOracle.Instance, community);
-            //        ga.PlayerData.gold = 100;
-            //        community.Agents.Add(ga);
-            //    }
-            //}
-
-            //GameOracle.Instance.Communities.Add(community);
+            go.OnTurnEnded += OnTurnEnded;
             
-            Console.WriteLine("Press Enter to Kill Server");
-
+            Console.WriteLine("Press Escape to Kill Server");
 
             var lastTime = Environment.TickCount;
 
             while (true) {
 
-                //System.Threading.Thread.Sleep(50);
-
-                if( Environment.TickCount - lastTime > 50 )
+                if (Console.KeyAvailable)
                 {
-                    lastTime = Environment.TickCount;
-
-                    // GameOracle.Instance.EndTurn();
-
-                    if (Console.KeyAvailable)
+                    var keyInfo = Console.ReadKey();
+                    if (keyInfo.Key == ConsoleKey.Escape)
                     {
                         break;
                     }
-
+                    else if (keyInfo.Key == ConsoleKey.P)
+                    {
+                        Console.WriteLine("Writing turn to file");
+                        System.IO.File.WriteAllText(
+                            Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),"worldsim.txt"),
+                            GameOracle.Instance.ToString()
+                        );
+                    }
+                    else if (keyInfo.Key == ConsoleKey.Enter)
+                    {
+                        Console.WriteLine("Ending Turn");
+                        GameOracle.Instance.EndTurn();                        
+                    }
                 }
+                //}
             }
             
             wssv.Stop();
         }
 
+        public static void OnTurnEnded()
+        {
+            var gameSessions = wssv.WebSocketServices["/Laputa"].Sessions;
+
+            foreach (var session in gameSessions.Sessions)
+            {
+                TurnNumberContentMsg replyContent = new TurnNumberContentMsg();
+                replyContent.TurnNumber = (int)GameOracle.Instance.TurnNumber;
+                TurnNumberReplyMsg replyMsg = new TurnNumberReplyMsg(replyContent);
+
+                string json = JsonConvert.SerializeObject(replyMsg);
+
+                WorldSimMsg requestMsg = new WorldSimMsg("TURN_NUMBER", json);
+
+                session.Context.WebSocket.Send(JsonConvert.SerializeObject(requestMsg));
+            }
+        }
 
 
         public static void MyMethod(object sender, ElapsedEventArgs e)
