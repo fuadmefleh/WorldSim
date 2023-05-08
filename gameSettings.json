@@ -1,62 +1,230 @@
 {
 	"Items": [
 		{
+			"Name": "Cotton",
+			"IType": "Semi",
+			"BaseQty": 0,
+			"QualityOfLife": 0.01,
+			"NeedFulfillment": 0
+		},
+		{
+			"Name": "Fabric",
+			"IType": "Clothing",
+			"BaseQty": 0,
+			"QualityOfLife": 0.0,
+			"NeedFulfillment": 0.66
+		},
+		{
+			"Name": "Clothes",
+			"IType": "Clothing",
+			"BaseQty": 0,
+			"QualityOfLife": 0.0,
+			"NeedFulfillment": 1.0
+		},
+		{
 			"Name": "Grain",
 			"IType": "Semi",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.01,
+			"NeedFulfillment": 0
 		},
 		{
 			"Name": "Bread",
 			"IType": "Food",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.0,
+			"NeedFulfillment": 0.33
+		},
+		{
+			"Name": "Transportation",
+			"IType": "Trade",
+			"BaseQty": 0,
+			"QualityOfLife": 0.1
 		},
 		{
 			"Name": "Tools",
 			"IType": "Semi",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.1
 		},
 		{
 			"Name": "Iron Ore",
 			"IType": "Semi",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.1
 		},
 		{
 			"Name": "Iron",
 			"IType": "Semi",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.1
 		},
 		{
 			"Name": "Wood",
 			"IType": "Semi",
-			"BaseQty": 0
+			"BaseQty": 0,
+			"QualityOfLife": 0.1
+		},
+		{
+			"Name": "Firewood",
+			"IType": "Fuel",
+			"BaseQty": 0,
+			"QualityOfLife": 0
+		}
+	],
+	"PopTechnologies": [
+		{
+			"ID": "tech_fire",
+			"Name": "Fire",
+			"Dependencies": [
+				"tech_language"
+			]
+		},
+		{
+			"ID": "tech_language",
+			"Name": "Language",
+			"Dependencies": []
 		}
 	],
 	"PopNeeds": [
 		{
-			"WealthLevel": 0,
-			"PopItemNeeds": [
-				{
-					"ItemName": "Bread",
-					"Qty": 7
-				}
-			]
+			"ID": "basic_food",
+			"Name": "Basic Food",
+			"AssociatedItemTypes": [ "Food" ],
+			"MinSOLLevel": 1,
+			"MaxSOLLevel": 29
+		},
+		{
+			"ID": "heating",
+			"Name": "Heating",
+			"AssociatedItemTypes": [ "Fuel" ],
+			"MinSOLLevel": 1,
+			"MaxSOLLevel": 29
+		},
+		{
+			"ID": "luxury_food",
+			"Name": "Luxury Food",
+			"AssociatedItemTypes": [ "Food" ],
+			"MinSOLLevel": 20,
+			"MaxSOLLevel": 100
+		},
+		{
+			"ID": "simple_clothing",
+			"Name": "Simple Clothing",
+			"AssociatedItemTypes": [ "Clothing" ],
+			"MinSOLLevel": 1,
+			"MaxSOLLevel": 14
+		},
+		{
+			"ID": "standard_clothing",
+			"Name": "Standard Clothing",
+			"AssociatedItemTypes": [ "Clothing" ],
+			"MinSOLLevel": 10,
+			"MaxSOLLevel": 100
 		}
 	],
 	"AgentTypes": [
+		{
+			"Name": "Trader",
+			"RecipeNames": [
+				"Create Caravan"
+			],
+			"RequiredWorkers": 10,
+			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
+			"StartingInventory": [
+				{
+					"ItemName": "Bread",
+					"Quantity": 2
+				}
+			]
+		},
+		{
+			"Name": "Firewood Chopper",
+			"RecipeNames": [
+				"Chop Firewood"
+			],
+			"RequiredWorkers": 10,
+			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
+			"StartingInventory": [
+				{
+					"ItemName": "Wood",
+					"Quantity": 3
+				}
+			]
+		},
+		{
+			"Name": "Cotton Farmer",
+			"RecipeNames": [
+				"Farm Cotton"
+			],
+			"RequiredWorkers": 10,
+			"StartingGold": 100,
+			"TurnsToBuild": 10,
+			"Level": 1,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 2
+				}
+			]
+		},
+		{
+			"Name": "Weaver",
+			"RecipeNames": [
+				"Weave Fabric"
+			],
+			"RequiredWorkers": 10,
+			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 2
+				},
+				{
+					"ItemName": "Cotton",
+					"Quantity": 10
+				}
+			]
+		},
+		{
+			"Name": "Clothier",
+			"RecipeNames": [
+				"Craft Clothes"
+			],
+			"RequiredWorkers": 10,
+			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
+			"StartingInventory": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 2
+				},
+				{
+					"ItemName": "Fabric",
+					"Quantity": 10
+				}
+			]
+		},
 		{
 			"Name": "Wheat Farmer",
 			"RecipeNames": [
 				"Farm Grain"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 10,
+			"Level": 1,
 			"StartingInventory": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 1
-				},
-				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"Quantity": 2
 				}
 			]
 		},
@@ -65,15 +233,22 @@
 			"RecipeNames": [
 				"Bake Bread"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
 			"StartingInventory": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 1
+					"Quantity": 2
 				},
 				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"ItemName": "Grain",
+					"Quantity": 10
+				},
+				{
+					"ItemName": "Wood",
+					"Quantity": 10
 				}
 			]
 		},
@@ -82,15 +257,14 @@
 			"RecipeNames": [
 				"Chop Wood"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
 			"StartingInventory": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 1
-				},
-				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"Quantity": 2
 				}
 			]
 		},
@@ -99,15 +273,14 @@
 			"RecipeNames": [
 				"Mine Iron Ore"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
 			"StartingInventory": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 1
-				},
-				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"Quantity": 2
 				}
 			]
 		},
@@ -116,15 +289,22 @@
 			"RecipeNames": [
 				"Refine Iron"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
 			"StartingInventory": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 1
+					"Quantity": 5
 				},
 				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"ItemName": "Iron Ore",
+					"Quantity": 10
+				},
+				{
+					"ItemName": "Wood",
+					"Quantity": 10
 				}
 			]
 		},
@@ -133,95 +313,215 @@
 			"RecipeNames": [
 				"Forge Tools"
 			],
+			"RequiredWorkers": 10,
 			"StartingGold": 100,
+			"TurnsToBuild": 2,
+			"Level": 1,
 			"StartingInventory": [
 				{
-					"ItemName": "Tools",
-					"Quantity": 1
+					"ItemName": "Iron",
+					"Quantity": 10
 				},
 				{
-					"ItemName": "Bread",
-					"Quantity": 3
+					"ItemName": "Wood",
+					"Quantity": 10
 				}
 			]
 		}
 	],
 	"Recipes": [
 		{
-			"Name": "Farm Grain",
+			"Name": "Create Caravan",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [],
+			"Inputs": [
+				{
+					"ItemName": "Bread",
+					"Quantity": 4,
+					"IdealQuantity": 8,
+					"ChanceOfConsuming": 0.1
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Transportation",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Chop Firewood",
+			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [],
+			"Inputs": [
+				{
+					"ItemName": "Wood",
+					"Quantity": 2,
+					"IdealQuantity": 4,
+					"ChanceOfConsuming": 1.0
+				},
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 3,
+					"ChanceOfConsuming": 0.75
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Firewood",
+					"Quantity": 4
+				}
+			]
+		},
+		{
+			"Name": "Farm Cotton",
+			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Arable Land"
+			],
 			"Inputs": [
 				{
 					"ItemName": "Tools",
 					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 0.1
+					"IdealQuantity": 3,
+					"ChanceOfConsuming": 0.9
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Cotton",
+					"Quantity": 25
+				}
+			]
+		},
+		{
+			"Name": "Weave Fabric",
+			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Settlement"
+			],
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.75
 				},
 				{
-					"ItemName": "Bread",
-					"Quantity": 1,
-					"IdealQuantity": 5,
+					"ItemName": "Cotton",
+					"Quantity": 10,
+					"IdealQuantity": 20,
 					"ChanceOfConsuming": 1.0
 				}
 			],
 			"Outputs": [
 				{
-					"ItemName": "Grain",
+					"ItemName": "Fabric",
 					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Craft Clothes",
+			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Settlement"
+			],
+			"BaseWageMultiplier":  2,
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.75
+				},
+				{
+					"ItemName": "Fabric",
+					"Quantity": 1,
+					"IdealQuantity": 3,
+					"ChanceOfConsuming": 1.0
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Clothes",
+					"Quantity": 5
+				}
+			]
+		},
+		{
+			"Name": "Farm Grain",
+			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Arable Land"
+			],
+			"Inputs": [
+				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 3,
+					"ChanceOfConsuming": 0.9
+				}
+			],
+			"Outputs": [
+				{
+					"ItemName": "Grain",
+					"Quantity": 25
 				}
 			]
 		},
 		{
 			"Name": "Bake Bread",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Settlement"
+			],
 			"Inputs": [
 				{
-					"ItemName": "Tools",
-					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 0.1
-				},
-				{
 					"ItemName": "Wood",
-					"Quantity": 2,
-					"IdealQuantity": 5,
+					"Quantity": 1,
+					"IdealQuantity": 3,
 					"ChanceOfConsuming": 1.0
 				},
 				{
+					"ItemName": "Tools",
+					"Quantity": 1,
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.2
+				},
+				{
 					"ItemName": "Grain",
-					"Quantity": 3,
-					"IdealQuantity": 5,
+					"Quantity": 10,
+					"IdealQuantity": 20,
 					"ChanceOfConsuming": 1.0
 				}
 			],
 			"Outputs": [
 				{
 					"ItemName": "Bread",
-					"Quantity": 5
+					"Quantity": 10
 				}
 			]
 		},
 		{
 			"Name": "Chop Wood",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Forest"
+			],
 			"Inputs": [
 				{
 					"ItemName": "Tools",
 					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 0.1
-				},
-				{
-					"ItemName": "Bread",
-					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 1.0
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.85
 				}
 			],
 			"Outputs": [
 				{
 					"ItemName": "Wood",
-					"Quantity": 5
+					"Quantity": 20
 				}
 			],
 			"Requirements": [
@@ -233,47 +533,47 @@
 		{
 			"Name": "Mine Iron Ore",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Iron Ore"
+			],
 			"Inputs": [
 				{
 					"ItemName": "Tools",
 					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 0.1
-				},
-				{
-					"ItemName": "Bread",
-					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 1.0
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.9
 				}
 			],
 			"Outputs": [
 				{
 					"ItemName": "Iron Ore",
-					"Quantity": 5
+					"Quantity": 20
 				}
 			]
 		},
 		{
 			"Name": "Refine Iron",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Settlement"
+			],
 			"Inputs": [
 				{
 					"ItemName": "Tools",
 					"Quantity": 1,
-					"IdealQuantity": 5,
-					"ChanceOfConsuming": 0.1
+					"IdealQuantity": 2,
+					"ChanceOfConsuming": 0.6
 				},
 				{
 					"ItemName": "Wood",
 					"Quantity": 2,
-					"IdealQuantity": 5,
+					"IdealQuantity": 4,
 					"ChanceOfConsuming": 1.0
 				},
 				{
 					"ItemName": "Iron Ore",
-					"Quantity": 5,
-					"IdealQuantity": 15,
+					"Quantity": 10,
+					"IdealQuantity": 10,
 					"ChanceOfConsuming": 1.0
 				}
 			],
@@ -287,6 +587,9 @@
 		{
 			"Name": "Forge Tools",
 			"ChanceOfFailure": 0.05,
+			"ResourcesRequired": [
+				"Settlement"
+			],
 			"Inputs": [
 				{
 					"ItemName": "Wood",
@@ -296,15 +599,15 @@
 				},
 				{
 					"ItemName": "Iron",
-					"Quantity": 15,
-					"IdealQuantity": 30,
+					"Quantity": 5,
+					"IdealQuantity": 10,
 					"ChanceOfConsuming": 1.0
 				}
 			],
 			"Outputs": [
 				{
 					"ItemName": "Tools",
-					"Quantity": 5
+					"Quantity": 20
 				}
 			]
 		}
@@ -312,18 +615,27 @@
 	"Resources": [
 		{
 			"Name": "Forest",
-			"Biomes": [ "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
-			"HeightTypes": [ "Grass", "Forest", "Rock" ]
+			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
+			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ],
+			"IsWorldGenerated": true
 		},
 		{
 			"Name": "Arable Land",
 			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
-			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ]
+			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ],
+			"IsWorldGenerated": true
 		},
 		{
 			"Name": "Iron Ore",
 			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
-			"HeightTypes": [ "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ]
+			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ],
+			"IsWorldGenerated": true
+		},
+		{
+			"Name": "Settlement",
+			"Biomes": [ "Savanna", "Grassland", "Tundra", "TropicalRainforest", "Woodland", "SeasonalForest", "TemperateRainforest", "BorealForest" ],
+			"HeightTypes": [ "Grass", "Forest", "Rock", "Snow", "Dirt", "Scrublands", "Highlands", "Hills", "Mountain" ],
+			"IsWorldGenerated": false
 		}
 	]
 }
