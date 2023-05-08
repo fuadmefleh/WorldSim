@@ -33,9 +33,13 @@ namespace WorldSimAPI
 
     public class GamePopCenterContentMsg
     {
+        public string name;
         public int xPos;
         public int yPos;
         public SettlementType settlementType;
+        public List<FactoryContentMsg> factoryData;
+        public MarketContentMsg marketContent;
+        public float wealth;
 
         public List<GamePopContentMsg> gamePops;
 
@@ -44,11 +48,13 @@ namespace WorldSimAPI
             xPos = x;
             yPos = y;
             gamePops = new List<GamePopContentMsg>();
+            factoryData = new List<FactoryContentMsg>();
         }
 
         public GamePopCenterContentMsg()
         {
             gamePops = new List<GamePopContentMsg>();
+            factoryData = new List<FactoryContentMsg>();
         }
     }
 
@@ -65,5 +71,9 @@ namespace WorldSimAPI
         public string Occupation { get; set; }
 
         public int Quantity { get; set; }
+
+        public float Wealth { get; set; }
+
+        public float OverallHappiness { get; set; }
     }
 }

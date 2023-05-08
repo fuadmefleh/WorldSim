@@ -8,6 +8,8 @@ namespace WorldSimAPI
     
 	public enum SettlementType
 	{
+		HunterGather,
+
 		Hamlet,
 		Village, // 150 to 500
 
