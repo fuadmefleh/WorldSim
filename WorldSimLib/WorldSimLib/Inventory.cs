@@ -11,7 +11,7 @@ namespace WorldSimLib
  
     public class Inventory : InventoryData
     {
-        const int MaxSlotSize = 50;
+        public int MaxSlotSize = 50;
 
         public Inventory()
         {
@@ -75,7 +75,7 @@ namespace WorldSimLib
             }
 
             // Remove empty records
-            collectionForItem.RemoveAll(pred => pred.Quantity <= 0);
+            //collectionForItem.RemoveAll(pred => pred.Quantity <= 0);
 
             ItemsContainer[itemName] = collectionForItem;
 
@@ -211,7 +211,28 @@ namespace WorldSimLib
 
             return totalInputMaterialCost;
         }
-        public void ProcessRecipe(Recipe recipe, float laborCost = 0)
+
+        public void IncreaseItemCost(string itemName, float amount)
+        {
+            if (!ItemsContainer.ContainsKey(itemName))
+                return;
+
+            var collectionForItem = ItemsContainer[itemName];
+            int totalQuantity = collectionForItem.FindAll(record => record.Quantity > 0).Count;
+
+            if (totalQuantity == 0)
+                return;
+
+            float costIncreasePerRecord = amount / totalQuantity;
+
+            foreach (var record in collectionForItem)
+            {
+                record.Cost += costIncreasePerRecord;
+            }
+        }
+
+
+        public void ProcessRecipe(Recipe recipe, float efficiency = 1, float laborCost = 0)
         {
             if (!CanProcessRecipe(recipe))
                 return;

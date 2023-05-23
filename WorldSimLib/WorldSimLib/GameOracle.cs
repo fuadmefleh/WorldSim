@@ -37,7 +37,7 @@ namespace WorldSimLib
 
         public delegate void OnTurnEndedHandler();
 
-        GameNameGenerators GameNameGenerators { get; set; }
+        public GameNameGenerators GameNameGenerators { get; set; }
         public Map gameMap;
 
         public int mapWidth = 100;
@@ -96,6 +96,11 @@ namespace WorldSimLib
                     Occupation = "Nomad"
                 };
 
+                newPop.Name = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance); 
+
+                while( newPop.Name == null )
+                    newPop.Name = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
                 string newPopCenterName = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
 
                 while ( newPopCenterName == null )
@@ -106,13 +111,13 @@ namespace WorldSimLib
                 GamePopCenter newPopCenter = new GamePopCenter(
                      newPopCenterName,
                      startPoints[i],
-                     new List<GamePop>(),
+                     new Dictionary<GamePop, int>(),
                      WorldSimAPI.SettlementType.HunterGather
                 );
 
-                newPop.AddPopToLocation(newPopCenter, 100);
-                
-                newPopCenter.Populations.Add(newPop);
+                newPop.AddPopToLocation(newPopCenter, 100);                
+                newPopCenter.Populations.Add(newPop, 100);
+                newPop.WealthAtLocations[newPopCenter].AddAmount(newPopCenter.LocalCurrency, 100);
 
                 newPop.AddNeeds(newPopCenter, GameData.PopNeeds);
                 newPop.Technologies.Add(GameData.TechnologyFromName("Language"));
@@ -143,6 +148,32 @@ namespace WorldSimLib
         }
 
         #endregion
+
+
+        public string ToMarkdown()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine($"# GameOracle: Turn {TurnNumber}");
+            sb.AppendLine($"* **Map Dimensions:** {mapWidth} x {mapHeight}");
+            sb.AppendLine($"* **Population Centers:** {_popCenters.Count}");
+
+            for (int i = 0; i < _popCenters.Count; i++)
+            {
+                sb.AppendLine(_popCenters[i].ToMarkdown());
+                sb.AppendLine();
+            }
+
+
+            sb.AppendLine($"* **Populations:** {GamePopulations.Count}");
+
+            foreach (var pop in GamePopulations)
+            {
+                sb.AppendLine(pop.Value.ToMarkdown());
+            }
+
+            return sb.ToString();
+        }
 
         public override string ToString()
         {
@@ -177,8 +208,10 @@ namespace WorldSimLib
                 population.Value.EndTurn(TurnNumber);
             }
 
-            foreach ( GamePopCenter popCenter in PopCenters )
+            for (int i = 0; i < PopCenters.Count; i++)
             {
+                GamePopCenter popCenter = PopCenters[i];
+
                 Console.ForegroundColor = ConsoleColor.Red;
 
                 Console.WriteLine($"Processing popCenter: {popCenter.Name}");

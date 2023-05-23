@@ -36,7 +36,7 @@ namespace WorldSimService.RequestHandlers
                     popCenterContentMsg.factoryData = popCenter.Factorys.ConvertAll(x => x.ToContentMsg());
                     popCenterContentMsg.marketContent = popCenter.MarketPlace.ToContentMsg();
 
-                    foreach ( var gamePop in popCenter.Populations )
+                    foreach ( var gamePop in popCenter.Populations.Keys )
                     {
                         GamePopContentMsg popContentMsg = new GamePopContentMsg();
                         popContentMsg.Culture = gamePop.Culture;

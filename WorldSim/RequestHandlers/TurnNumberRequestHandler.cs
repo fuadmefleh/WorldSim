@@ -24,6 +24,7 @@ namespace WorldSimService.RequestHandlers
             replyContent.TurnNumber = (int)GameOracle.Instance.TurnNumber;
             PopulatePopCenterContentMessage(replyContent.PopulationCenters);
             PopulateCaravanContentMessage(replyContent.Caravans);
+            PopulateSettlerContentMessage(replyContent.Settlers);
 
             TurnNumberReplyMsg replyMsg = new TurnNumberReplyMsg(replyContent);
 
@@ -53,6 +54,25 @@ namespace WorldSimService.RequestHandlers
             }
         }
 
+        void PopulateSettlerContentMessage(List<CaravanContentMsg> caravanList)
+        {
+            var gamePopCenters = GameOracle.Instance.PopCenters;
+
+            foreach (var popCenter in gamePopCenters)
+            {
+                foreach (var travelTimer in popCenter.SettlerQueue)
+                {
+                    (var caravan, var path) = travelTimer.ToValueTuple();
+
+                    CaravanContentMsg caravanMsg = new CaravanContentMsg();
+                    caravanMsg.X = (int)caravan.Location.position.X;
+                    caravanMsg.Y = (int)caravan.Location.position.Y;
+
+                    caravanList.Add(caravanMsg);
+                }
+            }
+        }
+
         void PopulatePopCenterContentMessage( List<GamePopCenterContentMsg> popCentersList )
         {           
             var gamePopCenters = GameOracle.Instance.PopCenters;
@@ -66,9 +86,9 @@ namespace WorldSimService.RequestHandlers
                 popCenterContentMsg.settlementType = popCenter.SettlementLevel;
                 popCenterContentMsg.factoryData = popCenter.Factorys.ConvertAll(x => x.ToContentMsg());
                 popCenterContentMsg.marketContent = popCenter.MarketPlace.ToContentMsg();
-                popCenterContentMsg.wealth = popCenter.Wealth;
+                popCenterContentMsg.wealth = popCenter.Wallet.GetAmount(popCenter.LocalCurrency);
 
-                foreach (var gamePop in popCenter.Populations)
+                foreach (var gamePop in popCenter.Populations.Keys)
                 {
                     GamePopContentMsg popContentMsg = gamePop.ToContentMsg(popCenter);
 

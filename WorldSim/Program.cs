@@ -88,6 +88,11 @@ namespace Example
                             Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.Desktop),"worldsim.txt"),
                             GameOracle.Instance.ToString()
                         );
+
+                        System.IO.File.WriteAllText(
+                            Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "worldsim.md"),
+                            GameOracle.Instance.ToMarkdown()
+                        );
                     }
                     else if (keyInfo.Key == ConsoleKey.Enter)
                     {

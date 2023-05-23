@@ -52,7 +52,7 @@ namespace WorldSimLib
                 foreach (HexTile adjacentTile in currentTile.adjacentTiles)
                 {
                     // Ignore not walkable adjacent tiles.
-                    if (adjacentTile.isObstacle)
+                    if (!adjacentTile.Collidable)
                     {
                         continue;
                     }

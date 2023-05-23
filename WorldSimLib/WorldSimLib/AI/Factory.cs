@@ -27,13 +27,12 @@ namespace WorldSimLib.AI
 
         public float Wage { get; set; }
 
+        public int Level { get; set; } = 1;
+
         int turnsSinceLastWorkerAdjustment = 0;
+        int turnsSinceLastRaise = 0;
         int turnsSinceLastProduction = 0;
         int turnsSinceLastSale = 0;
-
-        public Dictionary<uint, float> WealthAtTurn { get; set; } = new Dictionary<uint, float>();
-
-        public float previousWealth { get; set; } = 0;
 
         void Init(GamePopCenter center)
         {
@@ -47,39 +46,50 @@ namespace WorldSimLib.AI
             {
                 float price = center.MarketPlace.GetAveragePrice(item.Name);
 
-                _priceBeliefs.Add(item.Name, new Vector2(price * 0.65f, price * 1.65f));
+                _priceBeliefs.Add(item.Name, new Vector2(Wage * 0.65f, Wage * 1.65f));
             }
         }
 
-        public float ProfitOverTurns(uint turnNumber, uint lookback)
+        public int TotalWorkers
         {
-            uint turnToStartAt = Math.Max(1, turnNumber - lookback);
-
-            float totalWealth = 0;
-
-            if (turnToStartAt == turnNumber)
-                return totalWealth;
-
-            if (!WealthAtTurn.ContainsKey(turnToStartAt))
-                return totalWealth;
-
-            for (uint i = turnToStartAt; i < turnNumber; i++)
+            get
             {
-                var diff = WealthAtTurn[i + 1] - WealthAtTurn[i];
-
-                totalWealth += diff;
+                return Workers.Values.Sum();
             }
-
-            return totalWealth;
         }
+
+        public int WorkersNeeded
+        {
+            get {
+                return WorkersRequired - TotalWorkers;
+            }
+        }
+
+        public int WorkersRequired
+        {
+            get
+            {
+                return agentType.RequiredWorkers * Level;
+            }
+        }
+
+        public void FireAllWorkers(GamePopCenter center)
+        {
+            foreach (var worker in Workers)
+            {
+                worker.Key.FireWorkers( center, worker.Value );
+            }
+            Workers.Clear();
+            turnsSinceLastWorkerAdjustment = 0;
+        }
+
 
         public void EndTurn(uint turnNumber, GamePopCenter center)
         {
             if (_priceBeliefs == null)
                 Init(center);
 
-            WealthAtTurn[turnNumber] = Wealth;
-            previousWealth = Wealth;
+            WealthAtTurn[turnNumber] = new GameAgentWallet(Wallet);
 
             // Increment turnsSinceLastSale if no sales occurred in the last turn
             bool anySales = OffersFromLastTurn.Any(offer => offer.offerType == OfferType.Sell && offer.IsProcessed);
@@ -96,7 +106,7 @@ namespace WorldSimLib.AI
 
             PayWages(turnNumber, center);
 
-            if (Workers.Values.Sum() < agentType.RequiredWorkers)
+            if (TotalWorkers == 0)
             {
                 turnsSinceLastWorkerAdjustment++;
             }
@@ -105,15 +115,18 @@ namespace WorldSimLib.AI
                 turnsSinceLastWorkerAdjustment = 0;
             }
 
+            turnsSinceLastRaise++;
+
+            if (turnsSinceLastRaise > 5 && turnNumber > 5 && ProfitOverTurns(turnNumber, 5).GetAmount(center.LocalCurrency) > 0)
+            {
+                AdjustWage(center);
+                turnsSinceLastRaise = 0;
+            }
+
             if (turnsSinceLastWorkerAdjustment >= 3)
             {
                 AdjustWage(center);
                 turnsSinceLastWorkerAdjustment = 0;
-            }
-
-            if ( turnNumber > 5 && ProfitOverTurns(turnNumber, 5) > 0)
-            {
-
             }
 
             ProcessRecipes(turnNumber, center);
@@ -121,7 +134,22 @@ namespace WorldSimLib.AI
             SellGoods(turnNumber, center);
 
             BuyGoods(turnNumber, center);
+
+            // Check if the factory didn't produce any goods in this turn
+            if (turnsSinceLastProduction > 0)
+            {
+                // Add the cost of wages to the existing inventory of output
+                foreach (Recipe recipe in agentType.Recipes)
+                {
+                    foreach (var output in recipe.Outputs)
+                    {
+                        var itemName = output.ItemName;
+                        Inventory.IncreaseItemCost(itemName, TotalWages());
+                    }
+                }
+            }
         }
+
 
         protected override void AdjustPriceBeliefs(uint turnNumber, GamePopCenter center)
         {
@@ -142,8 +170,10 @@ namespace WorldSimLib.AI
 
                 if (offer.IsProcessed)
                 {
+                    float clearingPriceWeight = 0.8f; // Adjust this weight to give more influence to the clearing price
+
                     // Use the clearing price to update the price belief
-                    middlePrice = (historicalPriceWeight * offer.ClearingPrice) + ((1 - historicalPriceWeight) * middlePrice);
+                    middlePrice = (clearingPriceWeight * offer.ClearingPrice) + ((1 - clearingPriceWeight) * middlePrice);
                     priceDistance *= FullProcessedPriceDistanceMultiplier;
                     priceDistance /= 2;
 
@@ -166,6 +196,8 @@ namespace WorldSimLib.AI
                     Vector2 adjustment = (multiplier - 1) * LearningRate * currentPriceBelief;
                     _priceBeliefs[itemName] += adjustment;
                 }
+
+                _priceBeliefs[itemName] = new Vector2(Math.Max(0, _priceBeliefs[itemName].X), Math.Max(0, _priceBeliefs[itemName].Y));
             }
 
             OffersFromLastTurn.Clear();
@@ -191,7 +223,9 @@ namespace WorldSimLib.AI
             }
 
             // Calculate the new wage
-            float newWage = avgWage * desiredProfitMargin * totalCost / (totalCost - avgWage * Workers.Values.Sum());
+            //float newWage = (avgWage * desiredProfitMargin * totalCost) / (totalCost - avgWage * Workers.Values.Sum());
+                        
+            float newWage = Wage * 1.05f;
 
             Console.WriteLine($"Updating wage {newWage} from {Wage}");
 
@@ -204,11 +238,11 @@ namespace WorldSimLib.AI
         {
             foreach( var pop in Workers)
             {
-                pop.Key.WealthAtLocations[center].Amount += Wage * pop.Value;
-                Wealth -= Wage * pop.Value;
+                pop.Key.WealthAtLocations[center].AddAmount( center.LocalCurrency, Wage * pop.Value );
+                Wallet.RemoveAmount( center.LocalCurrency, Wage * pop.Value);
             }
         }
-        float TotalWages()
+        public float TotalWages()
         {
             float total = 0.0f;
             foreach (var pop in Workers)
@@ -244,7 +278,7 @@ namespace WorldSimLib.AI
                 foreach (var input in recipe.Inputs)
                 {
                     var itemName = input.ItemName;
-                    int shortage = this.Inventory.Shortage(itemName, input.IdealQuantity);
+                    int shortage = this.Inventory.Shortage(itemName, input.IdealQuantity * Level);
                    
                     float price = StaticRandom.Instance.Range(_priceBeliefs[itemName].X, _priceBeliefs[itemName].Y);
 
@@ -259,7 +293,7 @@ namespace WorldSimLib.AI
                     }
 
                     // Determine the maximum quantity that can be afforded by the buyer
-                    int maxAffordableQuantity = (int)(Wealth / price);
+                    int maxAffordableQuantity = (int)(Wallet.GetAmount(center.LocalCurrency) / price);
 
                     // Use the minimum of the affordable quantity and the requested quantity
                     int quantityToProcess = Math.Min(shortage, maxAffordableQuantity);
@@ -267,7 +301,7 @@ namespace WorldSimLib.AI
                     if (quantityToProcess < 1)
                         continue;
 
-                    Offer offer = new Offer(itemName, price, quantityToProcess, OfferType.Buy)
+                    Offer offer = new Offer(itemName, price, quantityToProcess, OfferType.Buy, center.LocalCurrency)
                     {
                         owner = this
                     };
@@ -291,19 +325,19 @@ namespace WorldSimLib.AI
                     if (qtyToSell <= 0)
                         continue;
 
-                    float productionCost = CalculateProductionCost(recipe) + TotalWages();
+                    float productionCost = CalculateProductionCost(recipe);
                     float desiredProfitMargin = 1.2f;
 
                     // Calculate the pressure factor based on the turns since the last sale
                     float pressureFactor = 1.0f;
                     if (turnsSinceLastSale >= 3)
                     {
-                        pressureFactor = Math.Max(1.0f - (0.1f * (turnsSinceLastSale - 2)), 0.5f);
+                        pressureFactor = Math.Max(1.0f - (0.1f * (turnsSinceLastSale - 2)), 0.75f);
                     }
 
                     float price = productionCost * desiredProfitMargin * pressureFactor;
 
-                    Offer offer = new Offer(itemName, price, qtyToSell, OfferType.Sell)
+                    Offer offer = new Offer(itemName, price, qtyToSell, OfferType.Sell, center.LocalCurrency)
                     {
                         owner = this
                     };
@@ -342,6 +376,8 @@ namespace WorldSimLib.AI
         {
             bool wasProduced = false;
 
+            float efficiencyRate = TotalWorkers / WorkersRequired;
+
             // Create the factory product, consuming inputs and creating outputs
             foreach (var recipe in agentType.Recipes)
             {
@@ -351,15 +387,18 @@ namespace WorldSimLib.AI
 
                 bool hasRoomForOutput = Inventory.InventorySpaceLeft(recipe.Outputs[0].ItemName) >= recipe.Outputs[0].Quantity;
 
-                if (this.Inventory.CanProcessRecipe(recipe) && cellContainsResourceForRecipe)
+                for (int i = 0; i < Level; i++)
                 {
-                    wasProduced = true;
-
-                    if (hasRoomForOutput)
+                    if (this.Inventory.CanProcessRecipe(recipe) && cellContainsResourceForRecipe)
                     {
-                        this.Inventory.ProcessRecipe(recipe, TotalWages());
+                        wasProduced = true;
+
+                        if (hasRoomForOutput)
+                        {
+                            this.Inventory.ProcessRecipe(recipe, efficiencyRate, Wage * (WorkersRequired/Level));
+                        }
                     }
-                }                
+                }
             }
 
             if (wasProduced)
@@ -371,14 +410,61 @@ namespace WorldSimLib.AI
                 turnsSinceLastProduction++;
             }
         }
+        public string ToMarkdown()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine("## Factory: " + Name);
+            sb.AppendLine("* Level: " + Level);
+            sb.AppendLine("* Wage: " + Wage.ToString("##.##"));
+            sb.AppendLine("* AgentType: " + agentType.ToString());
+
+            sb.AppendLine("\n## Wallet:");
+
+            foreach (var currency in Wallet.Currencies)
+            {
+                sb.AppendLine("  * " + currency.Key.Name + ": " + currency.Value);
+            }
+
+            sb.AppendLine("### Inventory:");
+            sb.AppendLine("| Item Name | Cost | Cost Per Unit | Quantity | Original Quantity |");
+            sb.AppendLine("| --- | --- | --- | --- | --- |");
+            foreach (var item in Inventory.ItemsContainer)
+            {
+                foreach (var record in item.Value )//item.Value.FindAll( pred => pred.Quantity > 0 ) )
+                {
+                    sb.AppendFormat("| {0} | {1} | {2} | {3} | {4} |\n",
+                                    record.ItemName,
+                                    record.Cost.ToString("$##.##"),
+                                    record.CostPerUnit.ToString("$##.##"),
+                                    record.Quantity,
+                                    record.OriginalQuantity);
+                }
+            }
+
+            sb.AppendLine("* Workers: " + Workers.Values.Sum().ToString());
+
+            if (_priceBeliefs != null)
+            {
+                sb.AppendLine("\n## Price Beliefs:");
+                foreach (var item in _priceBeliefs)
+                {
+                    sb.AppendLine("  * " + item.Key + " x " + item.Value.X + ":" + item.Value.Y);
+                }
+            }
+
+
+            return sb.ToString();
+        }
+
+
 
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
 
             sb.AppendFormat("Factory: {0}\n", Name);
-            sb.AppendFormat("Previous Wealth: {0}\n", previousWealth.ToString("##.##"));
-            sb.AppendFormat("Wealth: {0}\n", Wealth.ToString("##.##"));
+            sb.AppendFormat("Level: {0}\n", Level);
             sb.AppendFormat("Wage: {0}\n", Wage.ToString("##.##"));
             sb.AppendFormat("AgentType: {0}\n", agentType.ToString());
             sb.AppendFormat("Inventory: {0}\n", Inventory.ToString());
@@ -391,6 +477,13 @@ namespace WorldSimLib.AI
                 {
                     sb.AppendFormat("\t\t{0} x {1}:{2}\n", item.Key, item.Value.X, item.Value.Y);
                 }
+            }
+
+            sb.AppendLine("\n\tWallet:");
+
+            foreach ( var currency in Wallet.Currencies)
+            {
+                sb.AppendFormat("\t{0}: {1}\n", currency.Key.Name, currency.Value);
             }
 
             //sb.AppendLine("Workers:");
@@ -407,7 +500,7 @@ namespace WorldSimLib.AI
         {
             FactoryContentMsg msg = new FactoryContentMsg();
             msg.Name = Name;
-            msg.Wealth = Wealth;
+            msg.Wealth = Wallet.Currencies.First().Value;
             msg.Inventory = Inventory;
 
             return msg;

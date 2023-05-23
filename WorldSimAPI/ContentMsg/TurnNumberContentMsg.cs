@@ -9,6 +9,7 @@ namespace WorldSimAPI.ContentMsg
     {
         public int TurnNumber { get; set; }
         public List<CaravanContentMsg> Caravans { get; set; } = new List<CaravanContentMsg>();
+        public List<CaravanContentMsg> Settlers { get; set; } = new List<CaravanContentMsg>();
         public List<GamePopCenterContentMsg> PopulationCenters { get; set; } = new List<GamePopCenterContentMsg>();
     }
 

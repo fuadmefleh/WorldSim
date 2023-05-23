@@ -26,5 +26,41 @@ namespace WorldSimLib.DataObjects
         {
            
         }
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine($"PopNeed: {Name}");
+            sb.AppendLine($"ID: {ID}");
+            sb.AppendLine($"Min Standard Of Living (SOL) Level: {MinSOLLevel}");
+            sb.AppendLine($"Max Standard Of Living (SOL) Level: {MaxSOLLevel}");
+
+            sb.AppendLine("Associated Item Types:");
+            foreach (var itemType in AssociatedItemTypes)
+            {
+                sb.AppendLine(itemType.ToString());
+            }
+
+            return sb.ToString();
+        }
+
+        public string ToMarkdown()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine($"#### PopNeed: {Name}");
+            sb.AppendLine($"- ID: `{ID}`");
+            sb.AppendLine($"- Min Standard Of Living (SOL) Level: `{MinSOLLevel}`");
+            sb.AppendLine($"- Max Standard Of Living (SOL) Level: `{MaxSOLLevel}`");
+
+            sb.AppendLine("##### Associated Item Types:");
+            foreach (var itemType in AssociatedItemTypes)
+            {
+                sb.AppendLine($"- {itemType.ToString()}");
+            }
+
+            return sb.ToString();
+        }
+
     }
 }

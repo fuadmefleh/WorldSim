@@ -1050,6 +1050,11 @@ namespace WorldSimLib
 
         public List<HexTile> GetSuitablePopStartPoints()
         {
+            return GetSuitablePopStartPoints(tileData);
+        }
+
+        public List<HexTile> GetSuitablePopStartPoints(List<HexTile> listOfTiles)
+        {
             List<BiomeType> suitableBiomes = new List<BiomeType>();
             suitableBiomes.Add(BiomeType.Savanna);
             suitableBiomes.Add(BiomeType.TropicalRainforest);
@@ -1068,8 +1073,8 @@ namespace WorldSimLib
             suitableHeightTypes.Add(HeightType.Grass);
             suitableHeightTypes.Add(HeightType.Hills);
 
-            return tileData.FindAll( (pred) => {
-                if (pred.Collidable && suitableBiomes.Contains(pred.BiomeType) )
+            return listOfTiles.FindAll((pred) => {
+                if (pred.Collidable && suitableBiomes.Contains(pred.BiomeType))
                     return true;
 
                 return false;

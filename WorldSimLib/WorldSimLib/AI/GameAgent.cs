@@ -10,50 +10,18 @@ using WorldSimLib.Utils;
 
 namespace WorldSimLib
 {
-    public class GameAgentWallet
-    {
-        float amount;
-
-        public GameAgentWallet(float amount)
-        {
-            Amount = amount;
-        }
-
-        public float Amount
-        {
-            get { return amount; }
-            set { amount = value; }
-        }
-
-        public override string ToString()
-        {
-            string retStr = "Wallet: \n";
-
-            retStr += Amount.ToString("##.##") + "\n";
-
-            return retStr;
-        }
-    }
     public class GameAgent
     {
         [JsonProperty]
         public string Name { get; set; }
-
-        [JsonProperty]
-        public virtual float Wealth {
-            get
-            {
-                return this.Wallet.Amount;
-            }
-            set
-            {
-                this.Wallet.Amount = value;
-            }
-        }        
-        public GameAgentWallet Wallet { get; set; } = new GameAgentWallet(0);
+  
+        public GameAgentWallet Wallet { get; set; } = new GameAgentWallet();
 
         [JsonProperty]
         public Inventory Inventory { get; set; } = new Inventory();
+
+        public Dictionary<uint, GameAgentWallet> WealthAtTurn { get; set; } = new Dictionary<uint, GameAgentWallet>();
+
 
 
         protected List<Offer> OffersFromLastTurn = new List<Offer>();
@@ -65,16 +33,16 @@ namespace WorldSimLib
         protected const float FullProcessedPriceDistanceMultiplier = 0.9f;
         protected const float LowerPriceBeliefMultiplier = 0.9f;
         protected const float RaisePriceBeliefMultiplier = 1.1f;
-        protected const float LearningRate = 1.1f;
+        protected const float LearningRate = 1.8f;
         protected const float OverpaymentPriceDistanceMultiplier = 0.5f;
 
         #endregion
 
+        protected GameData GameData { get { return GameOracle.Instance.GameData; } }
 
         public GameAgent(string name)
         {
             Name = name;
-            Wealth = 0;
         }
 
 
@@ -135,6 +103,19 @@ namespace WorldSimLib
             OffersFromLastTurn.Clear();
         }
 
+        public GameAgentWallet ProfitOverTurns(uint turnNumber, uint lookback)
+        {
+            uint turnToStartAt = Math.Max(1, turnNumber - lookback);
+            GameAgentWallet retVal = new GameAgentWallet();
+
+            if (turnToStartAt == turnNumber)
+                return retVal;
+
+            if (!WealthAtTurn.ContainsKey(turnToStartAt))
+                return retVal;
+
+            return WealthAtTurn[turnNumber] - WealthAtTurn[turnToStartAt];
+        }
 
         public void EndTurn(uint turnNumber)
         {

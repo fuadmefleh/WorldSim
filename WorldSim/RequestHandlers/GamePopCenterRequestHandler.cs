@@ -36,9 +36,9 @@ namespace WorldSimService.RequestHandlers
                     popCenterContentMsg.settlementType = popCenter.SettlementLevel;
                     popCenterContentMsg.factoryData = popCenter.Factorys.ConvertAll(x => x.ToContentMsg());
                     popCenterContentMsg.marketContent = popCenter.MarketPlace.ToContentMsg();
-                    popCenterContentMsg.wealth = popCenter.Wealth;
+                    popCenterContentMsg.wealth = popCenter.Wallet.GetAmount(popCenter.LocalCurrency);
 
-                    foreach (var gamePop in popCenter.Populations)
+                    foreach (var gamePop in popCenter.Populations.Keys)
                     {
                         GamePopContentMsg popContentMsg = gamePop.ToContentMsg(popCenter);                      
 

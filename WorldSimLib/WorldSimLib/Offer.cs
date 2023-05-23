@@ -24,6 +24,7 @@ namespace WorldSimLib
         public bool IsMarketOrder { get; set; }
         float _clearingPrice;
 
+        public GameCurrency currency;
         public string issue;
 
         public bool IsProcessed
@@ -97,7 +98,26 @@ namespace WorldSimLib
             return retStr;
         }
 
-        public Offer(string iName, float pricePerUnit, int quantity, OfferType oType, int dur = 1)
+        public string ToMarkdown()
+        {
+            string retStr = "| Attribute | Value |\n";
+            retStr += "| --- | --- |\n";
+
+            retStr += "| Item Name | " + itemName + " |\n";
+            retStr += "| Owner Name | " + owner.Name + " |\n";
+            retStr += "| Price per Unit | " + pricePerUnit + " |\n";
+            retStr += "| Quantity | " + qty + " |\n";
+            retStr += "| Original Quantity | " + origQty + " |\n";
+            retStr += "| Duration | " + duration + " |\n";
+            retStr += "| Age | " + age + " |\n";
+            retStr += "| Type | " + (offerType == OfferType.Buy ? "Buy" : "Sell") + " |\n";
+            retStr += "| Issue | " + issue + " |\n";
+
+            return retStr;
+        }
+
+
+        public Offer(string iName, float pricePerUnit, int quantity, OfferType oType, GameCurrency currency, int dur = 1)
         {
             this.itemName = iName;
             this.qty = quantity;
@@ -106,6 +126,7 @@ namespace WorldSimLib
             this.duration = dur;
             this.origQty = quantity;
             this.IsMarketOrder = false;
+            this.currency = currency;
         }
 
         public void MarkAsProcessed(float clearingPrice)

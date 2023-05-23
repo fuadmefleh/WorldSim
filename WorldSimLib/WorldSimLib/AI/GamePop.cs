@@ -47,6 +47,8 @@ namespace WorldSimLib.AI
 
         public Dictionary<GamePopCenter, int> EmploymentAtLocations { get; set; }
 
+        public Dictionary<GamePopCenter, float> StdOfLivingSumAtLocations { get; set; }
+
         public Dictionary<GamePopCenter, Inventory> InventoryAtLocations { get; set; }
 
         public Dictionary<GamePopCenter, GameAgentWallet> WealthAtLocations { get; set; }
@@ -56,9 +58,6 @@ namespace WorldSimLib.AI
         float previousQualityOfLife = 1f;
 
         float birthRate = 0.05f;
-
-        float previousSOLSum = 100;
-        float standardOfLivingSum = 100;
 
         Dictionary<GamePopCenter, NeedHappinessCollection> NeedHappinessAtLocations { get; set; }
 
@@ -114,12 +113,15 @@ namespace WorldSimLib.AI
 
         #endregion
 
+        float NeedMultiplier = 10.0f;
+
         #region Helpers
-        public int StandardOfLiving { 
-            get
-            {
-                return (int)Math.Floor(StandaradOfLivingSum / 100);
-            } 
+
+
+
+        public int StandardOfLiving(GamePopCenter center)
+        {
+            return (int)Math.Min( Math.Floor(StdOfLivingSumAtLocations[center] / 100), 100 );
         }
 
         public int TotalPopulation()
@@ -134,14 +136,14 @@ namespace WorldSimLib.AI
             return ret;
         }
 
-        float StandaradOfLivingSum { 
-            get { return standardOfLivingSum; } 
-            set
-            {
-                if (value < 100) standardOfLivingSum = 100;
-                else standardOfLivingSum = value;
-            }
-        }
+        //float StandaradOfLivingSum { 
+        //    get { return standardOfLivingSum; } 
+        //    set
+        //    {
+        //        if (value < 100) standardOfLivingSum = 100;
+        //        else standardOfLivingSum = value;
+        //    }
+        //}
 
         #endregion
 
@@ -155,6 +157,7 @@ namespace WorldSimLib.AI
             Needs = new List<PopNeed>();
             Technologies = new List<PopTechnology>();
             NeedHappinessAtLocations = new Dictionary<GamePopCenter, NeedHappinessCollection>();
+            StdOfLivingSumAtLocations = new Dictionary<GamePopCenter, float>();
         }
 
         void Init(GamePopCenter center)
@@ -171,22 +174,20 @@ namespace WorldSimLib.AI
             }
         }
 
-        
-
-        void ProcessNeeds( uint turnNumber, GamePopCenter center )
+        void ProcessNeeds(uint turnNumber, GamePopCenter center)
         {
             foreach (var need in Needs)
             {
-                if (need.MinSOLLevel > StandardOfLiving)
+                if (need.MinSOLLevel > StandardOfLiving(center))
                     continue;
 
-                if (need.MaxSOLLevel < StandardOfLiving)
+                if (need.MaxSOLLevel < StandardOfLiving(center))
                     continue;
 
                 foreach (var itemType in need.AssociatedItemTypes)
                 {
                     // For each 10 units of population, consume some items
-                    var amtToPurchase = (int)Math.Ceiling(Locations[center] / 10.0f);
+                    var amtToPurchase = (int)Math.Ceiling(Locations[center] / NeedMultiplier);
                     var item = GetClosestItemForQoL(itemType, CalculateQualityOfLife(center));
 
                     GameAgent tempAgent = new GameAgent(this.Name)
@@ -202,17 +203,20 @@ namespace WorldSimLib.AI
                     (var popNeed, var happinessLevel) = needToAdjust.ToValueTuple();
 
                     // Consume from inventory to fulfill need
-                    if (tempAgent.Inventory.ContainsItemAndQty(item.Name, (int)amtToPurchase))
+                    int actualAmt = tempAgent.Inventory.GetQuantityOfItem(item.Name);
+                    if (actualAmt > 0)
                     {
-                        happinessLevel += 10f * amtToPurchase;
+                        int amtToRemove = Math.Min(amtToPurchase, actualAmt);
+
+                        happinessLevel += 10f * amtToRemove;
 
                         if (happinessLevel > 100)
                         {
-                            StandaradOfLivingSum += happinessLevel - 100;
+                            StdOfLivingSumAtLocations[center] += happinessLevel - 100;
                             happinessLevel = 100;
-                        }                            
+                        }
 
-                        tempAgent.Inventory.RemoveFromInventory(item.Name, (int)amtToPurchase);
+                        tempAgent.Inventory.RemoveFromInventory(item.Name, amtToRemove);
                     }
                     else
                     {
@@ -220,9 +224,14 @@ namespace WorldSimLib.AI
 
                         if (happinessLevel < 0)
                         {
-                            StandaradOfLivingSum += happinessLevel;
+                            StdOfLivingSumAtLocations[center] += happinessLevel;
                             happinessLevel = 0;
                         }
+                    }
+
+                    if (StdOfLivingSumAtLocations[center] < 100)
+                    {
+                        StdOfLivingSumAtLocations[center] = 100;
                     }
 
                     needsForLocation[needToAdjustIdx] = new Tuple<PopNeed, float>(popNeed, happinessLevel);
@@ -230,20 +239,83 @@ namespace WorldSimLib.AI
             }
         }
 
+
+        //void ProcessNeeds( uint turnNumber, GamePopCenter center )
+        //{
+        //    foreach (var need in Needs)
+        //    {
+        //        if (need.MinSOLLevel > StandardOfLiving(center))
+        //            continue;
+
+        //        if (need.MaxSOLLevel < StandardOfLiving(center))
+        //            continue;
+
+        //        foreach (var itemType in need.AssociatedItemTypes)
+        //        {
+        //            // For each 10 units of population, consume some items
+        //            var amtToPurchase = (int)Math.Ceiling(Locations[center] / NeedMultiplier);
+        //            var item = GetClosestItemForQoL(itemType, CalculateQualityOfLife(center));
+
+        //            GameAgent tempAgent = new GameAgent(this.Name)
+        //            {
+        //                Wallet = WealthAtLocations[center],
+        //                Inventory = InventoryAtLocations[center]
+        //            };
+
+        //            var needsForLocation = NeedHappinessAtLocations[center];
+        //            var needToAdjustIdx = needsForLocation.FindIndex(pred => pred.Item1 == need);
+        //            var needToAdjust = needsForLocation[needToAdjustIdx];
+
+        //            (var popNeed, var happinessLevel) = needToAdjust.ToValueTuple();
+
+        //            // Consume from inventory to fulfill need
+        //            if (tempAgent.Inventory.ContainsItemAndQty(item.Name, (int)amtToPurchase))
+        //            {
+        //                happinessLevel += 10f * amtToPurchase;
+
+        //                if (happinessLevel > 100)
+        //                {
+        //                    StdOfLivingSumAtLocations[center] += happinessLevel - 100;
+        //                    happinessLevel = 100;
+        //                }                            
+
+        //                tempAgent.Inventory.RemoveFromInventory(item.Name, (int)amtToPurchase);
+        //            }
+        //            else
+        //            {
+        //                happinessLevel -= 7.5f * amtToPurchase;
+
+        //                if (happinessLevel < 0)
+        //                {
+        //                    StdOfLivingSumAtLocations[center] += happinessLevel;
+        //                    happinessLevel = 0;
+        //                }
+        //            }
+
+        //            if(StdOfLivingSumAtLocations[center] < 100)
+        //            {
+        //                StdOfLivingSumAtLocations[center] = 100;
+        //            }
+
+        //            needsForLocation[needToAdjustIdx] = new Tuple<PopNeed, float>(popNeed, happinessLevel);
+        //        }
+        //    }
+        //}
+
         void PurchaseForNeeds(uint turnNumber, GamePopCenter center)
         {
             foreach (var need in Needs)
             {
-                if (need.MinSOLLevel > StandardOfLiving)
+                if (need.MinSOLLevel > StandardOfLiving(center))
                     continue;
 
-                if (need.MaxSOLLevel < StandardOfLiving)
+                if (need.MaxSOLLevel < StandardOfLiving(center))
                     continue;
 
                 foreach (var itemType in need.AssociatedItemTypes)
                 {
                     // For each 100 units of population, purchase some items
-                    var amtToPurchase = (int)Math.Ceiling(Locations[center] / 10.0f);
+                    var amtToPurchase = (int)Math.Ceiling(Locations[center] / NeedMultiplier);
                     var item = GetClosestItemForQoL(itemType, CalculateQualityOfLife(center));
 
                     GameAgent tempAgent = new GameAgent(this.Name)
@@ -256,7 +328,7 @@ namespace WorldSimLib.AI
                     float price = StaticRandom.Instance.Range(_priceBeliefs[item.Name].X, _priceBeliefs[item.Name].Y);
 
                     // Determine the maximum quantity that can be afforded by the buyer
-                    int maxAffordableQuantity = (int)(tempAgent.Wallet.Amount / price);
+                    int maxAffordableQuantity = (int)(tempAgent.Wallet.GetAmount(center.LocalCurrency) / price);
 
                     // Use the minimum of the affordable quantity and the requested quantity
                     int quantityToProcess = (int)Math.Min(amtToPurchase * 1.5f, maxAffordableQuantity);
@@ -264,7 +336,7 @@ namespace WorldSimLib.AI
                     if (quantityToProcess < 1)
                         continue;
 
-                    Offer offer = new Offer(item.Name, price, quantityToProcess, OfferType.Buy)
+                    Offer offer = new Offer(item.Name, price, quantityToProcess, OfferType.Buy, center.LocalCurrency)
                     {
                         owner = tempAgent
                     };
@@ -294,12 +366,18 @@ namespace WorldSimLib.AI
 
                 FindJobs(center);
 
-                if (standardOfLivingSum > previousSOLSum)
-                {
-                    AddPopToLocation(center, (int)(Locations[center] * birthRate));
-                }
+                //if (standardOfLivingSum > previousSOLSum)
+                //{
 
-                previousSOLSum = standardOfLivingSum;
+                //}
+
+                if (turnNumber % 2 == 0)
+                {
+                    var newPopAmt = (int)(Locations[center] * birthRate);
+
+                    AddPopToLocation(center, newPopAmt);
+                    center.Populations[this] += newPopAmt;
+                }
 
                 //foreach (var need in Needs)
                 //{
@@ -338,12 +416,89 @@ namespace WorldSimLib.AI
             return selected;
         }
 
+
+
+        void FindBetterJobs(GamePopCenter center)
+        {
+            // Sort the factories by wage in descending order
+            var sortedFactories = center.Factorys.OrderBy(factory => factory.Wage).ThenByDescending(pred => pred.TotalWorkers).ToList();
+            var factoriesWithHighestWage = center.Factorys.OrderByDescending(pred => pred.WorkersNeeded).ThenByDescending(factory => factory.Wage).ToList();
+            sortedFactories.RemoveAll(pred => pred.TotalWorkers == 0);
+            var factoryWithLowestWage = sortedFactories[0];            
+
+            if( factoryWithLowestWage != null && factoryWithLowestWage.TotalWorkers > 0)
+            {
+                int randomWorkerCount = StaticRandom.Instance.Next( 1, factoryWithLowestWage.TotalWorkers );
+
+                foreach( var factory in factoriesWithHighestWage )
+                {
+                    int workersNeeded = factory.WorkersNeeded;
+
+                    if (workersNeeded <= randomWorkerCount )
+                    {
+                        if (factoryWithLowestWage.Workers.ContainsKey(this))
+                        {
+                            factoryWithLowestWage.Workers[this] -= workersNeeded;
+
+                            if( !factory.Workers.TryAdd( this, workersNeeded ) )
+                                factory.Workers[this] += workersNeeded;
+                        }
+
+                        randomWorkerCount -= workersNeeded;
+                    } 
+                    else
+                    {
+                        if (factoryWithLowestWage.Workers.ContainsKey(this))
+                        {
+                            factoryWithLowestWage.Workers[this] -= randomWorkerCount;
+
+                            if (!factory.Workers.TryAdd(this, randomWorkerCount))
+                                factory.Workers[this] += randomWorkerCount;
+                        }
+
+                        randomWorkerCount = 0;
+                    }
+
+                    if (randomWorkerCount == 0)
+                        break;
+                }
+            }
+            //foreach (var factory in sortedFactories)
+            //{
+            //    int requiredWorkers = factory.agentType.RequiredWorkers;
+            //    int totalWorkers = factory.Workers.Values.Sum();
+
+            //    if (totalWorkers >= requiredWorkers)
+            //    {
+            //        continue;
+            //    }
+
+            //    int workerDeficit = requiredWorkers - totalWorkers;
+            //    int workersToEmploy = Math.Min(availableToEmploy, workerDeficit);
+            //    EmploymentAtLocations[center] += workersToEmploy;
+
+            //    if (!factory.Workers.TryAdd(this, workersToEmploy))
+            //    {
+            //        factory.Workers[this] += workersToEmploy;
+            //    }
+
+            //    availableToEmploy -= workersToEmploy;
+
+            //    if (availableToEmploy <= 0)
+            //    {
+            //        return;
+            //    }
+            //}
+        }
+
+
         void FindJobs(GamePopCenter center)
         {
             int availableToEmploy = Locations[center] - EmploymentAtLocations[center];
 
             if (availableToEmploy <= 0)
             {
+                FindBetterJobs(center);
                 return;
             }
 
@@ -352,8 +507,8 @@ namespace WorldSimLib.AI
 
             foreach (var factory in sortedFactories)
             {
-                int requiredWorkers = factory.agentType.RequiredWorkers;
-                int totalWorkers = factory.Workers.Values.Sum();
+                int requiredWorkers = factory.WorkersRequired;
+                int totalWorkers = factory.TotalWorkers;
 
                 if (totalWorkers >= requiredWorkers)
                 {
@@ -378,6 +533,16 @@ namespace WorldSimLib.AI
             }
         }
 
+        public void FireWorkers(GamePopCenter center, int maxWorkers)
+        {
+            if( !EmploymentAtLocations.ContainsKey(center) )
+            {
+                return;
+            }
+
+            EmploymentAtLocations[center] -= maxWorkers;
+        }
+
         #region Public Helper Functions
 
         public void AddPopToLocation(GamePopCenter center, int amt)
@@ -391,7 +556,9 @@ namespace WorldSimLib.AI
                 Locations.Add(center, amt);
                 EmploymentAtLocations.Add(center, 0);
                 InventoryAtLocations.Add(center, new Inventory());
-                WealthAtLocations.Add(center, new GameAgentWallet(100));
+                WealthAtLocations.Add(center, new GameAgentWallet(center.LocalCurrency, 0));
+                StdOfLivingSumAtLocations.Add(center, 250);
+                AddNeeds(center, Needs);
             }
         }
 
@@ -452,16 +619,12 @@ namespace WorldSimLib.AI
 
                 if (offer.IsProcessed)
                 {
+                    float clearingPriceWeight = 0.8f; // Adjust this weight to give more influence to the clearing price
+
                     // Use the clearing price to update the price belief
-                    middlePrice = (historicalPriceWeight * offer.ClearingPrice) + ((1 - historicalPriceWeight) * middlePrice);
+                    middlePrice = (clearingPriceWeight * offer.ClearingPrice) + ((1 - clearingPriceWeight) * middlePrice);
                     priceDistance *= FullProcessedPriceDistanceMultiplier;
                     priceDistance /= 2;
-
-                    // Check if overpaid
-                    if (offer.ClearingPrice > middlePrice)
-                    {
-                        priceDistance *= OverpaymentPriceDistanceMultiplier;
-                    }
 
                     _priceBeliefs[itemName] = new Vector2(middlePrice - priceDistance, middlePrice + priceDistance);
                 }
@@ -550,11 +713,86 @@ namespace WorldSimLib.AI
                 EducationLevel = this.EducationLevel,
                 Religion = this.Religion,
                 Name = this.Name,
-                Wealth = this.WealthAtLocations[center].Amount,
+                Wealth = this.WealthAtLocations[center].Currencies.First().Value,
                 OverallHappiness = this.NeedHappinessAtLocations[center].Average(pred => pred.Item2)
             };
 
             return retMsg;
+        }
+
+        public string ToMarkdown()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendFormat("### GamePop: {0}\n", Name);
+            sb.AppendFormat("* **Culture:** {0}\n", Culture);
+            sb.AppendFormat("* **Religion:** {0}\n", Religion);
+            sb.AppendFormat("* **Education Level:** {0}\n", EducationLevel);
+            sb.AppendFormat("* **Occupation:** {0}\n", Occupation);
+
+            sb.AppendLine("#### Standard of Living at Location:");
+            foreach (var kvp in StdOfLivingSumAtLocations)
+            {
+                sb.AppendFormat("* {0}: {1}\n", kvp.Key.Name, kvp.Value);
+            }
+
+            //sb.AppendLine("#### Needs:");
+            //foreach (var need in Needs)
+            //{
+            //    sb.AppendFormat("* {0}\n", need.ToMarkdown());
+            //}
+
+            //sb.AppendLine("#### Technologies:");
+            //foreach (var tech in Technologies)
+            //{
+            //    sb.AppendFormat("* {0}\n", tech.ToString());
+            //}
+
+            sb.AppendLine("#### Locations:");
+            foreach (var kvp in Locations)
+            {
+                sb.AppendFormat("* {0} ({1})\n", kvp.Key.Name, kvp.Value);
+            }
+
+            sb.AppendLine("#### Inventory at Locations:");
+            foreach (var kvp in InventoryAtLocations)
+            {
+                sb.AppendFormat("##### {0}:\n", kvp.Key.Name);
+
+                sb.AppendLine("| Item Name | Cost | Cost Per Unit | Quantity | Original Quantity |");
+                sb.AppendLine("| --- | --- | --- | --- | --- |");
+
+                foreach (var item in kvp.Value.ItemsContainer) { 
+                    foreach (var record in item.Value.FindAll(pred=>pred.Quantity > 0))
+                    {
+                        sb.AppendFormat("| {0} | {1} | {2} | {3} | {4} |\n",
+                                    record.ItemName,
+                                    record.Cost.ToString("$##.##"),
+                                    record.CostPerUnit.ToString("$##.##"),
+                                    record.Quantity,
+                                    record.OriginalQuantity);
+                    }
+                }
+            }                       
+
+            sb.AppendLine("#### Wealth at Locations:");
+            foreach (var kvp in WealthAtLocations)
+            {
+                sb.AppendFormat("* {0}: {1}\n", kvp.Key.Name, kvp.Value);
+            }
+
+            sb.AppendLine("#### Need Happiness");
+            foreach (var kvp in NeedHappinessAtLocations)
+            {
+                sb.AppendFormat("* {0}:\n", kvp.Key.Name);
+
+                foreach (var item in kvp.Value)
+                {
+                    sb.AppendFormat("  * {0} x {1}\n", item.Item1.Name, item.Item2);
+                }
+            }
+
+            return sb.ToString();
         }
 
 
@@ -567,8 +805,12 @@ namespace WorldSimLib.AI
             sb.AppendFormat("Religion: {0}\n", Religion);
             sb.AppendFormat("EducationLevel: {0}\n", EducationLevel);
             sb.AppendFormat("Occupation: {0}\n", Occupation);
-            sb.AppendFormat("Standard Of Living Sum: {0}\n", StandaradOfLivingSum);
-            sb.AppendFormat("Previous SOL Sum: {0}\n", previousSOLSum);
+            
+            sb.AppendLine("Standard of Living at Location:");
+            foreach (var kvp in StdOfLivingSumAtLocations)
+            {
+                sb.AppendFormat("\t{0}: {1}\n", kvp.Key.Name, kvp.Value);
+            }
 
             sb.AppendLine("Needs:");
             foreach (var need in Needs)

@@ -58,6 +58,38 @@ namespace WorldSimLib
 			cachedData = new Dictionary<uint, Dictionary<uint, List<Offer>>>();
 		}
 
+        public string ToMarkdown()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine("# All Active Offers:");
+            if (allHistoricalOffers.Count == 0)
+                return sb.ToString();
+
+            var offers = allHistoricalOffers[allHistoricalOffers.Keys.Max()];
+            offers.Sort((a, b) => a.itemName.CompareTo(b.itemName));
+
+            sb.AppendLine("| Item Name | Owner Name | Price per Unit | Quantity | Original Quantity | Duration | Age | Type | Issue |");
+            sb.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+
+            foreach (var offer in offers)
+            {
+                sb.AppendLine("| " + offer.itemName +
+                              " | " + offer.owner.Name +
+                              " | " + offer.pricePerUnit +
+                              " | " + offer.qty +
+                              " | " + offer.origQty +
+                              " | " + offer.duration +
+                              " | " + offer.age +
+                              " | " + (offer.offerType == OfferType.Buy ? "Buy" : "Sell") +
+                              " | " + offer.issue + " |");
+            }
+
+            return sb.ToString();
+        }
+
+
+
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
@@ -135,7 +167,7 @@ namespace WorldSimLib
 			// 
 		}
 
-		public void EndTurn(uint turnNumber)
+		public new void EndTurn(uint turnNumber)
 		{
 			// Create an entry for the round data
 			allRoundData.TryAdd(turnNumber, new Dictionary<string, RoundData>());
@@ -330,9 +362,9 @@ namespace WorldSimLib
 				buyOffer.qty -= quantity_traded;
 
 				TransferGood(buyOffer.itemName, quantity_traded, clearing_price + tax, sellOffer.owner, buyOffer.owner);
-				TransferMoney(quantity_traded * clearing_price, quantity_traded * tax, sellOffer.owner, buyOffer.owner);
+				TransferMoney(quantity_traded * clearing_price, quantity_traded * tax, sellOffer.owner, buyOffer.owner, sellOffer.currency);
 
-				Wallet.Amount += tax * quantity_traded;
+				Wallet.AddAmount(sellOffer.currency, tax * quantity_traded);
 
 				//log the stats
 				rd.moneyTraded += (quantity_traded * clearing_price);
@@ -398,7 +430,7 @@ namespace WorldSimLib
 				float clearing_price = ExtensionMethods.Average(buyer.pricePerUnit, seller.pricePerUnit);
 
 				// Check if buyer has the funds
-                if (buyer.owner.Wealth < clearing_price * (1 + TaxRate) )
+                if (buyer.owner.Wallet.GetAmount(seller.currency) < clearing_price * (1 + TaxRate) )
 				{
 					buyer.issue = "Buyer doesn't have sufficient funds for purchase";
 					bids.RemoveAt(0);
@@ -406,7 +438,7 @@ namespace WorldSimLib
 				}
 
                 // Determine the maximum quantity that can be afforded by the buyer
-                int maxAffordableQuantity = (int)(buyer.owner.Wealth / clearing_price);
+                int maxAffordableQuantity = (int)(buyer.owner.Wallet.GetAmount(seller.currency) / clearing_price);
 
                 // Use the minimum of the affordable quantity and the requested quantity
                 int quantityToProcess = Math.Min(buyer.qty, maxAffordableQuantity);
@@ -568,10 +600,10 @@ namespace WorldSimLib
 			return best_market;
 		}
 
-		private void TransferMoney(float amount, float tax, GameAgent seller, GameAgent buyer)
+		private void TransferMoney(float amount, float tax, GameAgent seller, GameAgent buyer, GameCurrency currency)
 		{
-			seller.Wealth += amount;
-			buyer.Wealth -= amount + tax;
+			seller.Wallet.AddAmount(currency, amount);
+			buyer.Wallet.RemoveAmount(currency, amount + tax );
 		}
 
 		public void PlaceOffer(Offer offer)
