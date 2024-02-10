@@ -42,7 +42,8 @@ namespace WorldSimLib
 
         public int mapWidth = 100;
         public int mapHeight = 100;
-
+        
+        List<GamePlayer> _gamePlayers;
         List<GamePopCenter> _popCenters;
 
         public Dictionary<(string culture, string religon, string occupation), GamePop> GamePopulations { get; set; }
@@ -88,44 +89,17 @@ namespace WorldSimLib
             int lengthToUse = 2;// startPoints.Count >= 10 ? 10 : startPoints.Count;
 
             for (int i = 0; i < lengthToUse; i++)
-            {                
-                GamePop newPop = new GamePop("GamePop " + i.ToString())
-                {
-                    Culture = "Culture " + i.ToString(),
-                    Religion = "Religion " + i.ToString(),
-                    Occupation = "Nomad"
-                };
+            {
+                CreateNewGamePopCenter(startPoints[i]);
+            }
 
-                newPop.Name = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance); 
+            // Create the first players
+            _gamePlayers = new List<GamePlayer>();
 
-                while( newPop.Name == null )
-                    newPop.Name = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
-
-                string newPopCenterName = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
-
-                while ( newPopCenterName == null )
-                {
-                    newPopCenterName = GameNameGenerators.BiomeNameGenerators[startPoints[i].BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
-                }
-                
-                GamePopCenter newPopCenter = new GamePopCenter(
-                     newPopCenterName,
-                     startPoints[i],
-                     new Dictionary<GamePop, int>(),
-                     WorldSimAPI.SettlementType.HunterGather
-                );
-
-                newPop.AddPopToLocation(newPopCenter, 100);                
-                newPopCenter.Populations.Add(newPop, 100);
-                newPop.WealthAtLocations[newPopCenter].AddAmount(newPopCenter.LocalCurrency, 100);
-
-                newPop.AddNeeds(newPopCenter, GameData.PopNeeds);
-                newPop.Technologies.Add(GameData.TechnologyFromName("Language"));
-
-                Console.WriteLine("Added new pop: " + newPopCenterName);
-
-                GamePopulations.Add((newPop.Culture, newPop.Religion, newPop.Occupation), newPop);
-                PopCenters.Add(newPopCenter);
+            for (int i = 0; i < 4; i++)
+            {
+                GamePlayer newPlayer = new GamePlayer("Player " + i.ToString(), this);
+                _gamePlayers.Add(newPlayer);
             }
         }
 
@@ -149,7 +123,57 @@ namespace WorldSimLib
 
         #endregion
 
+        private void CreateNewGamePopCenter(HexTile startingPoint)
+        {
+            GamePop newPop = new GamePop("New GamePop")
+            {
+                Culture = "Culture (UPDATE ME)",
+                Religion = "Religion (UPDATE ME)",
+                Occupation = "Nomad"
+            };
 
+            newPop.Name = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            while (newPop.Name == null)
+                newPop.Name = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+
+            newPop.Culture = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            while (newPop.Culture == null)
+                newPop.Culture = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+
+            newPop.Religion = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            while (newPop.Religion == null)
+                newPop.Religion = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            string newPopCenterName = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            while (newPopCenterName == null)
+                newPopCenterName = GameNameGenerators.BiomeNameGenerators[startingPoint.BiomeType].GenerateName(3, 10, 0, null, StaticRandom.Instance);
+
+            GamePopCenter newPopCenter = new GamePopCenter(
+                 newPopCenterName,
+                 startingPoint,
+                 new Dictionary<GamePop, int>(),
+                 WorldSimAPI.SettlementType.HunterGather
+            );
+
+            newPop.AddPopToLocation(newPopCenter, 100);
+            newPopCenter.Populations.Add(newPop, 100);
+            newPop.WealthAtLocations[newPopCenter].AddAmount(newPopCenter.LocalCurrency, 100);
+
+            newPop.AddNeeds(newPopCenter, GameData.PopNeeds);
+            newPop.Technologies.Add(GameData.TechnologyFromName("Language"));
+
+            Console.WriteLine("Added new pop: " + newPopCenterName);
+
+            GamePopulations.Add((newPop.Culture, newPop.Religion, newPop.Occupation), newPop);
+            PopCenters.Add(newPopCenter);
+        }
+        
         public string ToMarkdown()
         {
             StringBuilder sb = new StringBuilder();

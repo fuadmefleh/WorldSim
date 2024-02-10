@@ -153,7 +153,7 @@ namespace WorldSimLib.AI
 
         protected override void AdjustPriceBeliefs(uint turnNumber, GamePopCenter center)
         {
-            float historicalPriceWeight = 0.5f;
+            float historicalPriceWeight = 0.3f;
 
             foreach (Offer offer in OffersFromLastTurn)
             {
@@ -326,13 +326,13 @@ namespace WorldSimLib.AI
                         continue;
 
                     float productionCost = CalculateProductionCost(recipe);
-                    float desiredProfitMargin = 1.2f;
+                    float desiredProfitMargin = StaticRandom.Instance.Range(1.25f, 2.5f);
 
                     // Calculate the pressure factor based on the turns since the last sale
                     float pressureFactor = 1.0f;
                     if (turnsSinceLastSale >= 3)
                     {
-                        pressureFactor = Math.Max(1.0f - (0.1f * (turnsSinceLastSale - 2)), 0.75f);
+                        pressureFactor = Math.Max(1.0f - (0.1f * (turnsSinceLastSale - 2)), 0.70f);
                     }
 
                     float price = productionCost * desiredProfitMargin * pressureFactor;
@@ -410,7 +410,7 @@ namespace WorldSimLib.AI
                 turnsSinceLastProduction++;
             }
         }
-        public string ToMarkdown()
+        public string ToMarkdown(bool fullInventory = false)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -429,16 +429,33 @@ namespace WorldSimLib.AI
             sb.AppendLine("### Inventory:");
             sb.AppendLine("| Item Name | Cost | Cost Per Unit | Quantity | Original Quantity |");
             sb.AppendLine("| --- | --- | --- | --- | --- |");
-            foreach (var item in Inventory.ItemsContainer)
+            if (fullInventory)
             {
-                foreach (var record in item.Value )//item.Value.FindAll( pred => pred.Quantity > 0 ) )
+                foreach (var item in Inventory.ItemsContainer)
                 {
-                    sb.AppendFormat("| {0} | {1} | {2} | {3} | {4} |\n",
-                                    record.ItemName,
-                                    record.Cost.ToString("$##.##"),
-                                    record.CostPerUnit.ToString("$##.##"),
-                                    record.Quantity,
-                                    record.OriginalQuantity);
+                    foreach (var record in item.Value)//item.Value.FindAll( pred => pred.Quantity > 0 ) )
+                    {
+                        sb.AppendFormat("| {0} | {1} | {2} | {3} | {4} |\n",
+                                        record.ItemName,
+                                        record.Cost.ToString("$##.##"),
+                                        record.CostPerUnit.ToString("$##.##"),
+                                        record.Quantity,
+                                        record.OriginalQuantity);
+                    }
+                }
+            } else
+            {
+                foreach (var item in Inventory.ItemsContainer)
+                {
+                    foreach (var record in item.Value.FindAll( pred => pred.Quantity > 0 ) )
+                    {
+                        sb.AppendFormat("| {0} | {1} | {2} | {3} | {4} |\n",
+                                        record.ItemName,
+                                        record.Cost.ToString("$##.##"),
+                                        record.CostPerUnit.ToString("$##.##"),
+                                        record.Quantity,
+                                        record.OriginalQuantity);
+                    }
                 }
             }
 

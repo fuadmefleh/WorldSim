@@ -113,7 +113,7 @@ namespace WorldSimLib.AI
 
         #endregion
 
-        float NeedMultiplier = 10.0f;
+        float NeedMultiplier = 8.0f;
 
         #region Helpers
 
@@ -645,6 +645,8 @@ namespace WorldSimLib.AI
                     Vector2 adjustment = (multiplier - 1) * LearningRate * currentPriceBelief;
                     _priceBeliefs[itemName] += adjustment;
                 }
+
+                _priceBeliefs[itemName] = new Vector2(Math.Max(0, _priceBeliefs[itemName].X), Math.Max(0, _priceBeliefs[itemName].Y));
             }
 
             OffersFromLastTurn.Clear();

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Numerics;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using WorldSimAPI;
 using WorldSimLib.DataObjects;
@@ -12,10 +13,15 @@ using WorldSimLib.Utils;
 
 namespace WorldSimLib.AI
 {
-    public class ConstructionTimer : Tuple<Factory, int>
+    public struct ConstructionTimer
     {
-        public ConstructionTimer(Factory item1, int item2) : base(item1, item2)
+        public Factory factory;
+        public int timer;
+
+        public ConstructionTimer(Factory item1, int item2)
         {
+            factory = item1;
+            timer = item2;            
         }
     }
 
@@ -82,14 +88,16 @@ namespace WorldSimLib.AI
             };
 
             MarketPlace = new MarketPlace();
+            MarketPlace.Name = name;
             Factorys = new List<Factory>();
+
             BankruptFactorys = new List<Factory>();
 
             TaxRate = 0.1f; // 5% tax rate per transaction
             IncomeTaxRate = 0.25f;
             MarketPlace.TaxRate = TaxRate;
 
-            this.Wallet.SetAmount(LocalCurrency, 500);
+            this.Wallet.SetAmount(LocalCurrency, 2000);
 
             // Add settlement resource to cell
             Location.AvailableResourceSources.TryAdd(
@@ -113,6 +121,7 @@ namespace WorldSimLib.AI
                     var newFactory = new Factory($"Factory {i}: {itemName}", agentType);
 
                     newFactory.Wallet.SetAmount(LocalCurrency, 100);
+                    this.Wallet.RemoveAmount(LocalCurrency, 100);
 
                     // Add initial inventory supplies for agent
                     foreach (var slot in agentType.StartingInventory)
@@ -170,7 +179,7 @@ namespace WorldSimLib.AI
 
                 if (unemployedCount < 0) continue;
 
-                var payout = unemployedCount * GetAverageWage() * 0.25f;
+                var payout = unemployedCount * GetAverageWage() * 0.1f;
                 pop.WealthAtLocations[this].AddAmount(LocalCurrency, payout);
                 Wallet.RemoveAmount(LocalCurrency, payout);
             }
@@ -193,7 +202,7 @@ namespace WorldSimLib.AI
 
         public new void EndTurn(uint turnNumber)
         {
-            WealthAtTurn[turnNumber] = new GameAgentWallet( Wallet );
+            WealthAtTurn[turnNumber] = new GameAgentWallet(Wallet);
 
             ProcessConstructionQueue(turnNumber);
 
@@ -203,25 +212,9 @@ namespace WorldSimLib.AI
 
             PayUnemployment();
 
-            foreach (var factory in Factorys)
-            {
-                factory.EndTurn(turnNumber, this);
+            HandleFactoriesEndTurn(turnNumber);
 
-                if ( (factory.ValueOfOutputGoods() * 1.2f)  + factory.Wallet.GetAmount(LocalCurrency) < 0)
-                {
-                    Console.WriteLine($"Factory: {factory.Name} went bankrupt");
-
-                    this.Inventory.Merge(factory.Inventory);
-                }
-            }
-
-            var newBankruptFactories = Factorys.FindAll(pred => pred.ValueOfOutputGoods() + pred.Wallet.GetAmount(LocalCurrency) < 0);
-            BankruptFactorys.AddRange(newBankruptFactories);
-            foreach(var factory in newBankruptFactories)
-            {
-                factory.FireAllWorkers(this);
-            }
-            Factorys.RemoveAll(pred => pred.ValueOfOutputGoods() + pred.Wallet.GetAmount(LocalCurrency) < 0);
+            HandleBankruptFactories(turnNumber);
 
             FindProfitableTradeWithNeighbor(turnNumber);
 
@@ -235,7 +228,7 @@ namespace WorldSimLib.AI
             var totalSalesTax = rd.Sum(pred => pred.Value.taxCollected);
 
             Wallet.AddAmount(LocalCurrency, totalSalesTax);
-            MarketPlace.Wallet.RemoveAmount( LocalCurrency, totalSalesTax);
+            MarketPlace.Wallet.RemoveAmount(LocalCurrency, totalSalesTax);
 
             CostOfLastConstruction -= totalSalesTax;
             CostOfLastConstruction -= totalIncomeTax;
@@ -259,7 +252,7 @@ namespace WorldSimLib.AI
                 _turnsSinceLastTaxAdjustment = 0;
             }
 
-            if (_turnsSinceLastTaxAdjustment >= 3 )
+            if (_turnsSinceLastTaxAdjustment >= 3)
             {
                 TaxRate *= 1.1f;
                 IncomeTaxRate *= 1.05f;
@@ -267,7 +260,7 @@ namespace WorldSimLib.AI
                 _turnsSinceLastTaxAdjustment = 0;
             }
 
-            if (CostOfLastConstruction < 0)
+            if (CostOfLastConstruction <= 0)
                 isPayingOffCosts = false;
 
             ProcessNewConstructions();
@@ -275,6 +268,32 @@ namespace WorldSimLib.AI
             FindNeighbors();
 
             FindSettlementLocation();
+        }
+
+        private void HandleFactoriesEndTurn(uint turnNumber )
+        {
+            foreach (var factory in Factorys)
+            {
+                factory.EndTurn(turnNumber, this);
+
+                if ((factory.ValueOfOutputGoods() * 1.2f) + factory.Wallet.GetAmount(LocalCurrency) < 0)
+                {
+                    Console.WriteLine($"Factory: {factory.Name} went bankrupt");
+
+                    this.Inventory.Merge(factory.Inventory);
+                }
+            }
+        }
+
+        private void HandleBankruptFactories(uint turnNumber)
+        {          
+            var newBankruptFactories = Factorys.FindAll(pred => (pred.ValueOfOutputGoods() * 1.2f) + pred.Wallet.GetAmount(LocalCurrency) < 0);
+            BankruptFactorys.AddRange(newBankruptFactories);
+            foreach (var factory in newBankruptFactories)
+            {
+                factory.FireAllWorkers(this);
+            }
+            Factorys.RemoveAll(pred => pred.ValueOfOutputGoods() + pred.Wallet.GetAmount(LocalCurrency) < 0);
         }
 
         public float TotalWealth()
@@ -336,9 +355,15 @@ namespace WorldSimLib.AI
             return Math.Abs(price1 - price2);
         }
 
+        /// <summary>
+        /// Finds a suitable location for a new settlement
+        /// </summary>
         public void FindSettlementLocation()
         {
+            // If we don't have enough population, don't bother
             if (TotalPopulation < 300) return;
+
+            // If we don't have any settlers, don't bother
             if (SettlerQueue.Count > 0) return;
 
             var suitableLocations = GameOracle.Instance.gameMap.GetSuitablePopStartPoints(VisitedTiles);
@@ -376,6 +401,11 @@ namespace WorldSimLib.AI
 
             SettlerQueue.Add(travelTimer);
         }
+
+        /// <summary>
+        /// Will attempt to find any neighbors that are within the initial search radius
+        /// This function is an AI function and should not be called by the player
+        /// </summary>
         public void FindNeighbors()
         {
             if( Inventory.ContainsItemAndQtyOfType(ItemType.Trade, initialSearchRadius) )
@@ -490,7 +520,7 @@ namespace WorldSimLib.AI
                 }
 
                 // Ignore an agent type we already building
-                if (ConstructionQueue.Exists(pred => pred.Item1.agentType.Name == agentType.Name))
+                if (ConstructionQueue.Exists(pred => pred.factory.agentType.Name == agentType.Name))
                     continue;
 
                 // Calculate the ratio of quantities bought and sold for the product produced by the factory
@@ -551,13 +581,13 @@ namespace WorldSimLib.AI
                 return;
             }
 
-            if (bestRatio < 4)
+            if (bestRatio < 3)
             {
-                Console.WriteLine("Best ratio below 10");
+                Console.WriteLine("Best ratio below 3");
                 return;
             }
 
-            if (ConstructionQueue.Exists(pred=>pred.Item1.agentType.Name == bestAgentToCreate.Name))
+            if (ConstructionQueue.Exists(pred=>pred.factory.agentType.Name == bestAgentToCreate.Name))
             {
                 Console.WriteLine("Already creating agent of same type");
                 return;
@@ -589,12 +619,11 @@ namespace WorldSimLib.AI
             // Process construction queue
             for (int i = 0; i < ConstructionQueue.Count; i++)
             {
-                (var factory, var timer) = ConstructionQueue[i].ToValueTuple();
+                var factory = ConstructionQueue[i].factory;
+                var timer = ConstructionQueue[i].timer;
 
                 timer -= 1;
                 factory.BuyGoods(turnNumber, this);
-
-                ConstructionQueue[i] = new ConstructionTimer(factory, timer);
 
                 if (timer == 0)
                 {
@@ -614,40 +643,56 @@ namespace WorldSimLib.AI
                     }
                 }
             }
-            ConstructionQueue.RemoveAll((conTimer) => conTimer.Item2 == 0);
+            ConstructionQueue.RemoveAll((conTimer) => conTimer.timer == 0);
         }
 
         void FindProfitableTradeWithNeighbor(uint turnNumber)
         {
-            foreach( var neighbor in KnownNeighbors )
+            Offer bestTrade = null;
+            float bestProfit = 0;
+
+            foreach (var neighbor in KnownNeighbors)
             {
-                // Calculate the exchange rate
-                var exchangeRate = CalculateExchangeRate( neighbor );
-
-                if( exchangeRate > 1 )
+                // Checking our sell offers against neighbor's buy offers
+                foreach (var ourSellOffer in MarketPlace.SellsOverPeriod(1))
                 {
-                    // Find an item to trade that is in demand locally and has a surplus in the neighbor
-                    var itemWithDemand = MarketPlace.GetHottestGood();
-                    var itemPriceInNeighborCurrency = neighbor.MarketPlace.GetAverageSellPrice(itemWithDemand, 3);
-                    var itemPriceInLocalCurrency = itemPriceInNeighborCurrency / exchangeRate;
+                    Offer neighborBuyOffer = neighbor.MarketPlace.GetBestBuyOfferForItem(ourSellOffer.itemName, 1);
 
-                    if( itemPriceInLocalCurrency > MarketPlace.GetAverageBuyPrice(itemWithDemand, 3) )
+                    if (neighborBuyOffer == null) continue;
+
+                    float potentialProfit = (neighborBuyOffer.pricePerUnit - ourSellOffer.pricePerUnit) * Math.Min(ourSellOffer.qty, neighborBuyOffer.qty);
+
+                    if (potentialProfit > bestProfit)
                     {
-                        // The item is in demand locally and has a surplus in the neighbor
-                        // Find the quantity to trade
-                        var quantityToProcess = Math.Min(neighbor.MarketPlace.GetTotalSellQuantity(itemWithDemand), MarketPlace.GetTotalBuyQuantity(itemWithDemand));
-                        
-                        //// Create the offer
-                        //Offer offer = new Offer(itemWithDemand, itemPriceInNeighborCurrency * 1.1f, quantityToProcess, OfferType.Buy, LocalCurrency)
-                        //{
-                        //    owner = this
-                        //};
-                 
-                        //neighbor.MarketPlace.PlaceOffer(offer);
+                        bestProfit = potentialProfit;
+                        bestTrade = ourSellOffer;
                     }
                 }
+
+                // Checking our buy offers against neighbor's sell offers
+                //foreach (var ourBuyOffer in MarketPlace.BuysOverPeriod(1))
+                //{
+                //    Offer neighborSellOffer = neighbor.MarketPlace.GetBestSellOfferForItem(ourBuyOffer.itemName);
+
+                //    if (neighborSellOffer == null) continue;
+
+                //    float potentialProfit = (ourBuyOffer.pricePerUnit - neighborSellOffer.pricePerUnit) * Math.Min(ourBuyOffer.qty, neighborSellOffer.qty);
+
+                //    if (potentialProfit > bestProfit)
+                //    {
+                //        bestProfit = potentialProfit;
+                //        bestTrade = ourBuyOffer;
+                //    }
+                //}
+            }
+
+            if (bestTrade != null)
+            {
+                // Execute the trade (this could be expanded upon, depending on game mechanics)
+                MarketPlace.PlaceOffer(bestTrade);
             }
         }
+
 
         void ProcessTravelQueue(uint turnNumber)
         {
@@ -694,7 +739,10 @@ namespace WorldSimLib.AI
 
                 if (GameOracle.Instance.IsPopCenterAtLocation( caravan.Location.position ) )
                 {
-                    KnownNeighbors.Add(GameOracle.Instance.GetPopCenterAtLocation(caravan.Location.position));
+                    var popCenter = GameOracle.Instance.GetPopCenterAtLocation(caravan.Location.position);
+
+                    if(popCenter != this )
+                        KnownNeighbors.Add(popCenter);
                 }
 
                 TravelQueue[i] = new TravelTimer(caravan, path);
@@ -840,7 +888,7 @@ namespace WorldSimLib.AI
             sb.AppendLine("\n## Bankrupt Factories:");
             foreach (var factory in BankruptFactorys)
             {
-                sb.AppendLine(factory.ToMarkdown());
+                sb.AppendLine(factory.ToMarkdown(true));
             }
 
             //sb.AppendLine("\n## Visited Tiles:");

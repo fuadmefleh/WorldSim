@@ -33,7 +33,7 @@ namespace WorldSimLib
         protected const float FullProcessedPriceDistanceMultiplier = 0.9f;
         protected const float LowerPriceBeliefMultiplier = 0.9f;
         protected const float RaisePriceBeliefMultiplier = 1.1f;
-        protected const float LearningRate = 1.8f;
+        protected const float LearningRate = 1.75f;
         protected const float OverpaymentPriceDistanceMultiplier = 0.5f;
 
         #endregion
